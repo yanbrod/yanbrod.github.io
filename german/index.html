@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deutsch Talentbaum - Meistere A1, A2, B1</title>
+  <meta name="description" content="Lerne Deutsch (A1-B1) mit einem interaktiven Talentbaum im Stil von World of Warcraft, inklusive Grammatik-Quizzes und Wörterbuch.">
+  <script type="module" crossorigin src="./assets/index-gla1Qo7Z.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Bi2CuG91.css">
+</head>
+<body>
+
+  <div id="app-container">
+    <!-- Header: Character Profile & Status -->
+    <header>
+      <div class="brand-section">
+        <span class="brand-icon" aria-hidden="true">⚔️</span>
+        <div>
+          <h1>DEUTSCH-TALENTBAUM</h1>
+          <div class="nav-tabs" role="tablist">
+            <button id="tab-tree" class="nav-tab active" role="tab" aria-selected="true">Talentbaum</button>
+            <button id="tab-dict" class="nav-tab" role="tab" aria-selected="false">Wörterbuch</button>
+            <button id="tab-stats" class="nav-tab" role="tab" aria-selected="false">📊 Statistik</button>
+            <button id="tab-express" class="nav-tab" role="tab" aria-selected="false">⚡ Express</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="character-panel">
+        <div class="char-info">
+          <!-- Editable character name -->
+          <div id="char-name" class="char-name" contenteditable="true" title="Klicken, um den Namen zu ändern">Deutscher Rekrut</div>
+          <div id="char-title" class="char-title a1">Deutsch-Rekrut (A1)</div>
+        </div>
+
+        <div class="stat-box" title="Verfügbare Talentpunkte">
+          <span class="stat-icon" aria-hidden="true">🌟</span>
+          <span id="talent-points-val" class="stat-value">1</span>
+          <span style="font-size:0.75rem; color:var(--color-gold); font-weight:bold; margin-left:3px;">Punkte</span>
+        </div>
+
+        <div class="xp-container">
+          <div class="xp-label">
+            <span>Erfahrung (EP)</span>
+            <span>Stufe <span id="char-level-val">1</span></span>
+          </div>
+          <div class="xp-bar-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="xp-bar-fill" class="xp-bar-fill"></div>
+          </div>
+          <div class="xp-label" style="justify-content: flex-end; font-size:0.75rem;">
+            <span><span id="xp-val">0</span> / <span id="max-xp-val">100</span> EP</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Section -->
+    <main class="main-content">
+      
+      <!-- Sidebar Control Panel -->
+      <section class="sidebar">
+        <!-- Matryoshka Doll Selector: Horizontal Side-by-Side -->
+        <div class="panel">
+          <h2 class="panel-title">
+            <span aria-hidden="true">🪆</span> Stufen-Matroschka
+          </h2>
+          <p style="font-size: 0.82rem; color: var(--color-text-muted); margin-bottom: 15px; line-height: 1.4;">
+            Wähle eine Stufe, um den entsprechenden Bereich hervorzuheben.
+          </p>
+          <div id="matryoshka-widget" class="matryoshka-widget">
+            <!-- A1 Doll Button -->
+            <button id="doll-a1" class="matryoshka-btn doll-a1 active" aria-label="Zeige A1 Level an">
+              <span class="doll-icon" aria-hidden="true">🌿</span>
+              <span class="doll-label">A1</span>
+            </button>
+            <!-- A2 Doll Button -->
+            <button id="doll-a2" class="matryoshka-btn doll-a2" aria-label="Zeige A2 Level an">
+              <span class="doll-icon" aria-hidden="true">❄️</span>
+              <span class="doll-label">A2</span>
+            </button>
+            <!-- B1 Doll Button -->
+            <button id="doll-b1" class="matryoshka-btn doll-b1" aria-label="Zeige B1 Level an">
+              <span class="doll-icon" aria-hidden="true">🔮</span>
+              <span class="doll-label">B1</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- System controls -->
+        <div class="panel" style="display:flex; flex-direction:column; gap:12px;">
+          <h2 class="panel-title"><span aria-hidden="true">⚙️</span> Spiel-Optionen</h2>
+          <button id="reset-btn" class="wow-button secondary" style="font-size:0.8rem; padding:8px 12px; width:100%;">Fortschritt Zurücksetzen</button>
+        </div>
+      </section>
+
+      <!-- Central Talent Tree View -->
+      <section id="tree-view" class="tree-outer-container">
+        <!-- Mobile-only sticky tab bar — duplicates the matryoshka buttons in sidebar -->
+        <div id="mobile-level-tabs" class="mobile-level-tabs" role="tablist" aria-label="Stufe wählen">
+          <button id="mtab-a1" class="mobile-level-tab active" data-level="A1" role="tab">🌿 A1</button>
+          <button id="mtab-a2" class="mobile-level-tab" data-level="A2" role="tab">❄️ A2</button>
+          <button id="mtab-b1" class="mobile-level-tab" data-level="B1" role="tab">🔮 B1</button>
+        </div>
+        <div class="tree-view-controls">
+          <div class="tree-help">
+            <span aria-hidden="true">💡</span>
+            <span>Klicke auf Fähigkeiten, um Grammatik zu lernen und Übungen zu starten! Gesperrte Knoten zeigen Voraussetzungen.</span>
+          </div>
+          <div class="tree-legend" aria-label="Knoten-Legende">
+            <span class="legend-chip legend-vocab"><span aria-hidden="true">📖</span> Lerne Vokabeln im Wörterbuch</span>
+            <span class="legend-chip legend-prereq"><span aria-hidden="true">🔒</span> Erst die Vorgänger-Fähigkeit meistern</span>
+            <span class="legend-chip legend-ready"><span aria-hidden="true">✨</span> Bereit zum Erlernen</span>
+          </div>
+        </div>
+
+        <div id="tree-grid-container" class="tree-grid-container show-a1">
+          <!-- Dynamic SVG connector lines layer -->
+          <svg id="tree-svg-canvas" class="tree-svg-canvas"></svg>
+
+          <!-- Level A1 Column -->
+          <div class="level-column" data-level="A1" data-level-title="A1 - Grundlagen"></div>
+
+          <!-- Level A2 Column -->
+          <div class="level-column" data-level="A2" data-level-title="A2 - Aufbau"></div>
+
+          <!-- Level B1 Column -->
+          <div class="level-column" data-level="B1" data-level-title="B1 - Fortgeschritten"></div>
+        </div>
+      </section>
+
+      <!-- Dictionary Tab View (Initially Hidden) -->
+      <section id="dictionary-view" style="display: none;">
+        <div class="dictionary-controls">
+          <div style="flex:1; min-width:250px;">
+            <input type="text" id="dict-search" class="custom-input" placeholder="Wort suchen (Deutsch oder Englisch)..." style="width:100%;">
+          </div>
+          <div class="filter-group">
+            <select id="dict-type-filter" class="custom-select" aria-label="Nach Wortart filtern">
+              <option value="all">Alle Wortarten</option>
+              <option value="nouns">Substantive</option>
+              <option value="verbs">Verben</option>
+              <option value="adjectives">Adjektive</option>
+              <option value="adverbs">Adverbien</option>
+              <option value="prepositions">Präpositionen</option>
+              <option value="conjunctions">Konjunktionen</option>
+              <option value="pronouns">Pronomen</option>
+              <option value="numerals">Numerale</option>
+              <option value="phrases">Phrasen</option>
+            </select>
+            <select id="dict-level-filter" class="custom-select" aria-label="Nach Niveau filtern">
+              <option value="all">Alle Niveaus</option>
+              <option value="A1">Niveau A1</option>
+              <option value="A2">Niveau A2</option>
+              <option value="B1">Niveau B1</option>
+            </select>
+            <select id="dict-status-filter" class="custom-select" aria-label="Nach Status filtern">
+              <option value="all">Alle Wörter</option>
+              <option value="learned">Gelernte (Bronze+)</option>
+              <option value="not_learned">Ungelernte</option>
+              <option value="mistakes">Mit Fehlern ⚠️</option>
+            </select>
+            <select id="dict-sort" class="custom-select" aria-label="Sortierung">
+              <option value="alpha">Alphabetisch (A-Z)</option>
+              <option value="alpha_desc">Alphabetisch (Z-A)</option>
+              <option value="random">Zufällig 🎲</option>
+              <option value="level">Nach Niveau</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="vocab-grid" class="vocab-grid">
+          <!-- Loaded dynamically from dictionaryData.js -->
+        </div>
+      </section>
+
+      <!-- Statistics Tab View (Initially Hidden) -->
+      <section id="stats-view" style="display: none;">
+        <div id="stats-content" class="stats-content">
+          <!-- Built dynamically by renderStats() -->
+        </div>
+      </section>
+
+      <!-- Express Training Tab — 178 verbs in 10-batch drill -->
+      <section id="express-view" style="display: none;">
+        <div id="express-content" class="express-content">
+          <!-- Built dynamically by renderExpress() -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Shared Hover Tooltip element -->
+  <div id="wow-tooltip" class="wow-tooltip" role="tooltip"></div>
+
+  <!-- Bottom toast for "next step" suggestions after exercise completion -->
+  <div id="next-step-toast" class="next-step-toast" role="status" aria-live="polite"></div>
+
+  <!-- Modal Dialog for Grammars and Exercises -->
+  <!-- closedby="closerequest" = only Escape closes; backdrop tap does NOT close
+       (avoids click-through to underlying skill node on mobile). -->
+  <dialog id="skill-dialog" closedby="closerequest" aria-labelledby="dialog-title">
+    <div class="dialog-header">
+      <h2 class="dialog-title">
+        <span id="dialog-icon" aria-hidden="true"></span>
+        <span id="dialog-title">Grammatik-Lektion</span>
+      </h2>
+      <button class="close-btn" onclick="document.getElementById('skill-dialog').close()" aria-label="Schließen">&times;</button>
+    </div>
+    
+    <div id="dialog-body" class="dialog-body">
+      <!-- Grammar explanation or exercise view loaded dynamically -->
+    </div>
+    
+    <div id="dialog-footer" class="dialog-footer">
+      <!-- Dynamic Buttons (Learn Skill, Start Exercise, Next Question) -->
+    </div>
+  </dialog>
+
+  <!-- Custom confirm dialog — replaces native confirm() for in-app prompts -->
+  <dialog id="confirm-dialog" closedby="closerequest" aria-labelledby="confirm-title">
+    <div class="dialog-header">
+      <h2 class="dialog-title">
+        <span aria-hidden="true">⚠️</span>
+        <span id="confirm-title">Bestätigen</span>
+      </h2>
+    </div>
+    <div class="dialog-body">
+      <p id="confirm-message" style="margin:0; line-height:1.5;">…</p>
+    </div>
+    <div class="dialog-footer">
+      <button id="confirm-cancel" class="wow-button secondary">Abbrechen</button>
+      <button id="confirm-ok" class="wow-button">OK</button>
+    </div>
+  </dialog>
+
+  <!-- Epic Level Up Overlay Fanfare (hidden until shown) -->
+  <div id="levelup-overlay" role="dialog" aria-labelledby="lvl-up-head" aria-hidden="true" inert>
+    <div class="levelup-content">
+      <div class="levelup-shield" aria-hidden="true">🛡️</div>
+      <h2 id="lvl-up-head" class="levelup-title">STUFENAUFSTIEG!</h2>
+      <div id="levelup-subtitle" class="levelup-subtitle">STUFE 2</div>
+      <div id="levelup-details" class="levelup-details"></div>
+      <button id="levelup-close" class="wow-button" style="margin-top:10px;">Weiter</button>
+    </div>
+  </div>
+
+  <!-- Load main app module -->
+</body>
+</html>
