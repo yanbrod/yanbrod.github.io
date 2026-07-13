@@ -291,7 +291,7 @@ const PROM = (() => {
     const end   = base.clone().addScaledVector(tang, -sep).normalize();
     const sideV = new V().crossVectors(start, end).normalize();       // out of the loop plane → lateral fan
     const baseH = R * (0.7 + rng()*0.7), nStrand = 5 + Math.floor(rng()*4);
-    proms.push({ period: 7 + rng()*8, phase: rng()*20, on: false, s: 0 });   // each loop's own burst clock
+    proms.push({ period: 14 + rng()*16, phase: rng()*40, tail: 0.4 + rng()*0.5, sizeScale: 0.7 + rng()*0.9, on: false, s: 0 });   // slower bursts + per-loop random stream size
     for (let s = 0; s < nStrand; s++) {
       const lateral = (s/(nStrand-1) - 0.5) * R * 0.5, h = baseH * (0.75 + rng()*0.4);
       const pts = new Float32Array((SEG+1)*3), tans = new Float32Array((SEG+1)*3);
@@ -310,7 +310,7 @@ const PROM = (() => {
   const PER = isTouch ? 55 : 85, N = strands.length * PER;
   const pos = new Float32Array(N*3), temp = new Float32Array(N), size = new Float32Array(N), alpha = new Float32Array(N), meta = [];
   for (let si = 0; si < strands.length; si++) for (let k = 0; k < PER; k++) {
-    size[si*PER+k] = 2.5 + rng()*3.5;
+    size[si*PER+k] = (2.5 + rng()*3.5) * proms[strands[si].prom].sizeScale;   // per-loop random stream size
     meta.push({ st: strands[si], lane: rng(), seed: rng()*100, width: R*(0.05+rng()*0.10) });   // lane = place in the packet
   }
   promGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -318,7 +318,7 @@ const PROM = (() => {
   promGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
   promGeo.setAttribute('aAlpha', new THREE.BufferAttribute(alpha, 1));
   const c = new V(), tg = new V(), rad = new V(), sd = new V(), nm = new V();
-  const BURST = 0.18, TAIL = 0.6;
+  const BURST = 0.18;
   const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x-e0)/(e1-e0))); return t*t*(3-2*t); };
   function update(clock) {
     for (let p = 0; p < proms.length; p++) {                          // each loop mostly dormant; occasionally one fires
@@ -328,7 +328,7 @@ const PROM = (() => {
     for (let i = 0; i < N; i++) {
       const m = meta[i], st = m.st, pr = proms[st.prom];
       if (!pr.on) { alpha[i] = 0; continue; }                          // dormant loop → particle hidden
-      let t = pr.s * (1 + TAIL) - m.lane * TAIL;                       // a limited packet travelling along one arc
+      let t = pr.s * (1 + pr.tail) - m.lane * pr.tail;                 // a limited packet travelling along one arc
       if (st.dir < 0) t = 1 - t;
       if (t < 0 || t > 1) { alpha[i] = 0; continue; }
       const f = t*SEG, j = Math.floor(f), fr = f-j, j3 = j*3, k3 = Math.min(SEG, j+1)*3;
