@@ -421,7 +421,7 @@ const planetMeshes = planets.map(p => {
           float c = texture2D(cloudMap, vUv).r;                       // white = cloud, black = clear sky
           float ndl = dot(normalize(vN), normalize(sunDir));
           float lit = smoothstep(-0.15, 0.25, ndl);                   // day/night — same terminator as the surface
-          float a = c * (0.08 + 0.92 * lit);                          // clouds fade out on the night side
+          float a = c * (0.02 + 0.98 * lit);                          // clouds nearly transparent on the night side
           vec3 col = vec3(1.0) * (0.16 + 0.9 * lit);                  // white by day, dark by night
           gl_FragColor = vec4(col, a);
         }`,
