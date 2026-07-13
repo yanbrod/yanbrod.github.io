@@ -200,10 +200,11 @@ const sunMat = new THREE.ShaderMaterial({
       float w = fbm(p*2.5 + vec3(0.0, time*0.05, 0.0));                  // slow warp field
       float n = fbm(p*3.5 + w*1.2 + vec3(time*0.06, 0.0, time*0.04));    // churning cells
       float boil = 0.5 + 0.5*n;
+      float shade = pow(clamp(boil, 0.0, 1.0), 1.4);                     // contrast curve
       vec3 base = texture2D(sunMap, vUv).rgb;
-      vec3 col = base * (0.75 + 0.7*boil);
-      col += vec3(1.0, 0.75, 0.3) * smoothstep(0.62, 0.95, boil) * 0.7;  // bright flares in the hot cells
-      gl_FragColor = vec4(col * 1.12, 1.0);
+      vec3 col = base * mix(0.18, 1.08, shade);                          // DARK churning lanes ↔ bright cells (visible boil)
+      col += vec3(1.0, 0.8, 0.35) * smoothstep(0.90, 1.0, boil) * 0.45;  // occasional bright flare
+      gl_FragColor = vec4(col, 1.0);
     }`,
 });
 const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(sun.radiusS, 48, 48), sunMat);
