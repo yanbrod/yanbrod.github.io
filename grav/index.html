@@ -125,7 +125,7 @@ const sun = { name: 'Sun', color: 0xff5a22, rwell: 100, x: 0, z: 0, speed: 0, an
 const planets = [
   { name: 'Mercury', color: 0x9c8a7a, rwell: 13, speed: 0.052, radiusS: 3.0, massS: 90,   orbitS: 72,  realR: 0.383, realM: 0.0553, realAU: 0.387 },
   { name: 'Venus',   color: 0xcaa46a, rwell: 17, speed: 0.039, radiusS: 5.0, massS: 200,  orbitS: 104, realR: 0.950, realM: 0.815,  realAU: 0.723 },
-  { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000 },
+  { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000, texture: 'earth.jpg', spin: 0.004 },
   { name: 'Mars',    color: 0xc1502e, rwell: 15, speed: 0.025, radiusS: 4.0, massS: 150,  orbitS: 176, realR: 0.532, realM: 0.107,  realAU: 1.524 },
   { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204 },
   { name: 'Saturn',  color: 0xd8c48f, rwell: 38, speed: 0.011, radiusS: 12,  massS: 1000, orbitS: 312, realR: 9.14,  realM: 95.2,   realAU: 9.583, ring: true },
@@ -163,10 +163,22 @@ function updateGrid() { for (let i = 0; i < gp.count; i++) gp.setZ(i, disp(gx[i]
 const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(sun.radiusS, 40, 40), new THREE.MeshBasicMaterial({ color: sun.color }));
 scene.add(sunMesh);
 
+const texLoader = new THREE.TextureLoader();
 const planetMeshes = planets.map(p => {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(p.radiusS, 28, 28),
-    new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.85, metalness: 0.05,
-      emissive: p.color, emissiveIntensity: 0.4 }));
+  let mat, seg = 28;
+  if (p.texture) {                                   // photographic Base Color / albedo (Earth), on standard sphere UV
+    const tex = texLoader.load(p.texture);
+    tex.colorSpace = THREE.SRGBColorSpace;           // albedo is sRGB, not linear
+    tex.wrapS = THREE.RepeatWrapping;                // U = longitude → wraps, seam on the far side
+    tex.wrapT = THREE.ClampToEdgeWrapping;           // V = latitude → clamp at the poles
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    mat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, roughness: 1, metalness: 0 });  // white → no tint over the map
+    seg = 64;                                        // smoother sphere for the photo
+  } else {
+    mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.85, metalness: 0.05,
+      emissive: p.color, emissiveIntensity: 0.4 });
+  }
+  const m = new THREE.Mesh(new THREE.SphereGeometry(p.radiusS, seg, seg), mat);
   if (p.ring) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(p.radiusS * 1.5, p.radiusS * 2.3, 48),
       new THREE.MeshBasicMaterial({ color: 0xd8c48f, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
@@ -335,7 +347,10 @@ function animate() {
   const sy = disp(0, 0);
   sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
   sunLight.position.set(0, sy + sun.radius, 0);
-  planets.forEach((p, i) => planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z));
+  planets.forEach((p, i) => {
+    planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
+    if (!paused && p.spin) planetMeshes[i].rotation.y += p.spin;
+  });
   orbitLines.forEach(o => {
     const pos = o.line.geometry.attributes.position;
     for (let k = 0; k < o.N; k++) { const a = k / o.N * Math.PI * 2, x = Math.cos(a) * o.r, z = Math.sin(a) * o.r; pos.setXYZ(k, x, disp(x, z) + 0.6, z); }
