@@ -125,7 +125,7 @@ const sun = { name: 'Sun', color: 0xff5a22, rwell: 100, x: 0, z: 0, speed: 0, an
 const planets = [
   { name: 'Mercury', color: 0x9c8a7a, rwell: 13, speed: 0.052, radiusS: 3.0, massS: 90,   orbitS: 72,  realR: 0.383, realM: 0.0553, realAU: 0.387 },
   { name: 'Venus',   color: 0xcaa46a, rwell: 17, speed: 0.039, radiusS: 5.0, massS: 200,  orbitS: 104, realR: 0.950, realM: 0.815,  realAU: 0.723 },
-  { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000, texture: 'earth.jpg', textureNight: 'earth_night.jpg', spin: 0.004 },
+  { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000, texture: 'earth.jpg', textureNight: 'earth_night.jpg', cloud: 'earth_clouds.jpg', spin: 0.004 },
   { name: 'Mars',    color: 0xc1502e, rwell: 15, speed: 0.025, radiusS: 4.0, massS: 150,  orbitS: 176, realR: 0.532, realM: 0.107,  realAU: 1.524, texture: 'mars.jpg', textureNight: 'mars_night.jpg', spin: 0.004, atmoColor: 0xc07a48, nightBoost: 0.85 },
   { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204 },
   { name: 'Saturn',  color: 0xd8c48f, rwell: 38, speed: 0.011, radiusS: 12,  massS: 1000, orbitS: 312, realR: 9.14,  realM: 95.2,   realAU: 9.583, ring: true },
@@ -406,6 +406,29 @@ const planetMeshes = planets.map(p => {
       emissive: p.color, emissiveIntensity: 0.4 });
   }
   const m = new THREE.Mesh(new THREE.SphereGeometry(p.radiusS, seg, seg), mat);
+  if (p.cloud) {                                     // drifting cloud shell, lit day/night like the surface
+    const ctex = texLoader.load(p.cloud);
+    ctex.wrapS = THREE.RepeatWrapping; ctex.wrapT = THREE.ClampToEdgeWrapping;
+    ctex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    p._cloudMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { cloudMap: { value: ctex }, sunDir: { value: new THREE.Vector3(1, 0, 0) } },
+      vertexShader: `varying vec2 vUv; varying vec3 vN;
+        void main(){ vUv = uv; vN = normalize(mat3(modelMatrix) * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `uniform sampler2D cloudMap; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN;
+        void main(){
+          float c = texture2D(cloudMap, vUv).r;                       // white = cloud, black = clear sky
+          float ndl = dot(normalize(vN), normalize(sunDir));
+          float lit = smoothstep(-0.15, 0.25, ndl);                   // day/night — same terminator as the surface
+          float a = c * (0.08 + 0.92 * lit);                          // clouds fade out on the night side
+          vec3 col = vec3(1.0) * (0.16 + 0.9 * lit);                  // white by day, dark by night
+          gl_FragColor = vec4(col, a);
+        }`,
+    });
+    p._cloud = new THREE.Mesh(new THREE.SphereGeometry(p.radiusS * 1.015, seg, seg), p._cloudMat);
+    m.add(p._cloud);
+  }
   if (p.ring) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(p.radiusS * 1.5, p.radiusS * 2.3, 48),
       new THREE.MeshBasicMaterial({ color: 0xd8c48f, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
@@ -579,7 +602,13 @@ function animate() {
   planets.forEach((p, i) => {
     planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
     if (!paused && p.spin) planetMeshes[i].rotation.y += p.spin;
-    if (p._mat) p._mat.uniforms.sunDir.value.copy(sunMesh.position).sub(planetMeshes[i].position).normalize();
+    if (p._mat) {
+      p._mat.uniforms.sunDir.value.copy(sunMesh.position).sub(planetMeshes[i].position).normalize();
+      if (p._cloudMat) {
+        p._cloudMat.uniforms.sunDir.value.copy(p._mat.uniforms.sunDir.value);
+        if (!paused) p._cloud.rotation.y += 0.0006;                   // clouds drift relative to the surface
+      }
+    }
   });
   orbitLines.forEach(o => {
     const pos = o.line.geometry.attributes.position;
