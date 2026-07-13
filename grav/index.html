@@ -391,7 +391,7 @@ const planetMeshes = planets.map(p => {
         void main() {
           vec3 N = normalize(vN); float ndl = dot(N, normalize(sunDir));
           float d = smoothstep(-0.12, 0.20, ndl);                       // soft day/night terminator
-          vec3 dayC = texture2D(dayMap, vUv).rgb * (0.55 + 0.45 * clamp(ndl, 0.0, 1.0));
+          vec3 dayC = texture2D(dayMap, vUv).rgb * (0.9 + 0.8 * clamp(ndl, 0.0, 1.0));
           vec3 nightC = texture2D(nightMap, vUv).rgb * 1.7;             // city lights on the dark side
           vec3 col = mix(nightC, dayC, d);
           vec3 V = normalize(cameraPosition - vW);
