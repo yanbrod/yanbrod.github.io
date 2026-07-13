@@ -266,7 +266,95 @@ const flameMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(col * a, a);
     }`,
 });
-// plasma jets disabled for now (flameMat kept above; re-add this mesh to bring them back — "потом доделаем")
+// plasma jets disabled (flameMat kept above, unused)
+
+// --- solar prominences: plasma flowing inside magnetic loops (per Ian's plan) ---
+// several loops anchored by two footpoints on the surface, arched via sin(πt)^1.35; particles stream along each
+// loop with cross-flow noise; some strands descend (coronal rain). Rendered as additive points, dark-red→white.
+const promGeo = new THREE.BufferGeometry();
+const PROM = (() => {
+  const V = THREE.Vector3, rng = Math.random, R = sun.radiusS, SEG = 48;
+  const slerp = (a, b, t, o) => {
+    const d = THREE.MathUtils.clamp(a.dot(b), -1, 1), th = Math.acos(d);
+    if (th < 1e-4) return o.copy(a).lerp(b, t).normalize();
+    const s = Math.sin(th);
+    return o.copy(a).multiplyScalar(Math.sin((1-t)*th)/s).addScaledVector(b, Math.sin(t*th)/s).normalize();
+  };
+  const strands = [], N_PROM = isTouch ? 3 : 4, tmp = new V();
+  for (let pi = 0; pi < N_PROM; pi++) {
+    const base = new V(rng()*2-1, rng()*1.3-0.15, rng()*2-1).normalize();
+    const tang = new V();
+    do { tang.set(rng()*2-1, rng()*2-1, rng()*2-1); tang.addScaledVector(base, -tang.dot(base)); } while (tang.lengthSq() < 0.05);
+    tang.normalize();                                                 // tangent to the sphere at base (guarded ≠ 0)
+    const sep = 0.16 + rng()*0.12;
+    const start = base.clone().addScaledVector(tang, sep).normalize();
+    const end   = base.clone().addScaledVector(tang, -sep).normalize();
+    const sideV = new V().crossVectors(start, end).normalize();       // out of the loop plane → lateral fan
+    const baseH = R * (0.5 + rng()*0.5), nStrand = 5 + Math.floor(rng()*4);
+    for (let s = 0; s < nStrand; s++) {
+      const lateral = (s/(nStrand-1) - 0.5) * R * 0.5, h = baseH * (0.75 + rng()*0.4);
+      const pts = new Float32Array((SEG+1)*3), tans = new Float32Array((SEG+1)*3);
+      for (let j = 0; j <= SEG; j++) {
+        const t = j/SEG, arch = Math.pow(Math.sin(Math.PI*t), 1.35);
+        slerp(start, end, t, tmp).multiplyScalar(R + h*arch).addScaledVector(sideV, lateral*arch);
+        pts[j*3]=tmp.x; pts[j*3+1]=tmp.y; pts[j*3+2]=tmp.z;
+      }
+      for (let j = 0; j <= SEG; j++) {
+        const a = Math.max(0,j-1)*3, b = Math.min(SEG,j+1)*3;
+        tans[j*3]=pts[b]-pts[a]; tans[j*3+1]=pts[b+1]-pts[a+1]; tans[j*3+2]=pts[b+2]-pts[a+2];
+      }
+      strands.push({ pts, tans, dir: (s % 4 === 0) ? -1 : 1 });        // every 4th strand flows back down
+    }
+  }
+  const PER = isTouch ? 55 : 85, N = strands.length * PER;
+  const pos = new Float32Array(N*3), temp = new Float32Array(N), size = new Float32Array(N), meta = [];
+  for (let si = 0; si < strands.length; si++) for (let k = 0; k < PER; k++) {
+    size[si*PER+k] = 2.5 + rng()*3.5;
+    meta.push({ st: strands[si], t0: rng(), speed: 0.05 + rng()*0.14, seed: rng()*100, width: R*(0.05+rng()*0.10) });
+  }
+  promGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  promGeo.setAttribute('aTemp', new THREE.BufferAttribute(temp, 1));
+  promGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  const c = new V(), tg = new V(), rad = new V(), sd = new V(), nm = new V();
+  function update(clock) {
+    for (let i = 0; i < N; i++) {
+      const m = meta[i], st = m.st;
+      let t = (m.t0 + m.st.dir*clock*m.speed) % 1; if (t < 0) t += 1;
+      const f = t*SEG, j = Math.floor(f), fr = f-j, j3 = j*3, k3 = Math.min(SEG, j+1)*3;
+      c.set(st.pts[j3]+(st.pts[k3]-st.pts[j3])*fr, st.pts[j3+1]+(st.pts[k3+1]-st.pts[j3+1])*fr, st.pts[j3+2]+(st.pts[k3+2]-st.pts[j3+2])*fr);
+      tg.set(st.tans[j3]+(st.tans[k3]-st.tans[j3])*fr, st.tans[j3+1]+(st.tans[k3+1]-st.tans[j3+1])*fr, st.tans[j3+2]+(st.tans[k3+2]-st.tans[j3+2])*fr);
+      if (tg.lengthSq() < 1e-8) tg.set(0, 1, 0); tg.normalize();
+      rad.copy(c).normalize(); sd.crossVectors(tg, rad);
+      if (sd.lengthSq() < 1e-6) sd.set(rad.y, rad.z, rad.x);          // guard: tangent ∥ radial
+      sd.normalize(); nm.crossVectors(sd, tg).normalize();
+      const n1 = Math.sin(t*13.0+m.seed+clock*0.9)*0.6 + Math.sin(t*27.0+m.seed*2.1+clock*1.7)*0.4;
+      const n2 = Math.cos(t*11.0+m.seed*1.3+clock*0.8)*0.6 + Math.cos(t*23.0+m.seed*0.7+clock*1.4)*0.4;
+      pos[i*3]  = c.x + nm.x*n1*m.width + sd.x*n2*m.width;
+      pos[i*3+1]= c.y + nm.y*n1*m.width + sd.y*n2*m.width;
+      pos[i*3+2]= c.z + nm.z*n1*m.width + sd.z*n2*m.width;
+      const arch = Math.pow(Math.sin(Math.PI*t), 1.2);
+      temp[i] = Math.min(1, arch*0.6 + 0.1*(n1+1.0));
+    }
+    promGeo.attributes.position.needsUpdate = true;
+    promGeo.attributes.aTemp.needsUpdate = true;
+  }
+  return { update };
+})();
+const promMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `attribute float aTemp; attribute float aSize; varying float vT;
+    void main(){ vT = aTemp; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = aSize * (520.0 / -mv.z); gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `varying float vT;
+    void main(){
+      float r = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, r); a = a*a*0.52;
+      vec3 dark = vec3(1.0,0.06,0.005), hot = vec3(1.0,0.6,0.12), core = vec3(1.0,0.95,0.7);
+      vec3 col = mix(dark, hot, vT); col = mix(col, core, pow(vT, 8.0));
+      gl_FragColor = vec4(col * a, a);
+    }`,
+});
+const prominences = new THREE.Points(promGeo, promMat);
+sunMesh.add(prominences);
 
 const planetMeshes = planets.map(p => {
   let mat, seg = 28;
@@ -473,6 +561,7 @@ function animate() {
   sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
   sunLight.position.set(0, sy + sun.radius, 0);
   if (!paused) { sunMat.uniforms.time.value += 0.026; sunMesh.rotation.y += 0.0012; }   // boil + slow axial spin
+  PROM.update(sunMat.uniforms.time.value);   // flow plasma along the magnetic loops
   planets.forEach((p, i) => {
     planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
     if (!paused && p.spin) planetMeshes[i].rotation.y += p.spin;
