@@ -131,9 +131,6 @@ function updateGrid() { for (let i = 0; i < gp.count; i++) gp.setZ(i, disp(gx[i]
 // --- sun (glowing) + planets ---
 const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(sun.radius, 40, 40), new THREE.MeshBasicMaterial({ color: sun.color }));
 scene.add(sunMesh);
-const glow = new THREE.Mesh(new THREE.SphereGeometry(sun.radius * 2.1, 32, 32),
-  new THREE.MeshBasicMaterial({ color: 0xff8a3c, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending }));
-sunMesh.add(glow);
 
 const planetMeshes = planets.map(p => {
   const m = new THREE.Mesh(new THREE.SphereGeometry(p.radius, 28, 28),
@@ -198,7 +195,7 @@ function animate() {
   const sy = disp(0, 0);
   sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
   sunLight.position.set(0, sy + sun.radius, 0);
-  planets.forEach((p, i) => planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius * 0.6, p.z));
+  planets.forEach((p, i) => planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z));
   orbitLines.forEach(o => {
     const pos = o.line.geometry.attributes.position;
     for (let k = 0; k < o.N; k++) { const a = k / o.N * Math.PI * 2, x = Math.cos(a) * o.r, z = Math.sin(a) * o.r; pos.setXYZ(k, x, disp(x, z) + 0.6, z); }
