@@ -265,8 +265,7 @@ const flameMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(col * a, a);
     }`,
 });
-const flame = new THREE.Mesh(new THREE.SphereGeometry(sun.radiusS, 96, 96), flameMat);
-sunMesh.add(flame);
+// plasma jets disabled for now (flameMat kept above; re-add this mesh to bring them back — "потом доделаем")
 
 const planetMeshes = planets.map(p => {
   let mat, seg = 28;
@@ -472,8 +471,7 @@ function animate() {
   const sy = disp(0, 0);
   sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
   sunLight.position.set(0, sy + sun.radius, 0);
-  if (!paused) { sunMat.uniforms.time.value += 0.026; sunMesh.rotation.y += 0.0012; }   // boil + slow axial spin
-  flameMat.uniforms.time.value = sunMat.uniforms.time.value;
+  if (!paused) { sunMat.uniforms.time.value += 0.013; sunMesh.rotation.y += 0.0012; }   // boil (½ speed) + slow axial spin
   planets.forEach((p, i) => {
     planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
     if (!paused && p.spin) planetMeshes[i].rotation.y += p.spin;
