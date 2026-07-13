@@ -25,8 +25,20 @@
            border: 1px solid #2a6b78; background: rgba(10,20,28,.5); color: #9fdbe8;
            -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
            pointer-events: none; white-space: nowrap; line-height: 1; }
-  #hud   { position: fixed; left: 14px; right: 78px; bottom: max(12px, env(safe-area-inset-bottom));
-           color: #5fbfd0; opacity: .6; font-size: clamp(10px, 3vw, 12px); line-height: 1.5;
+  #picker { position: fixed; left: max(8px, env(safe-area-inset-left)); right: 70px;
+            bottom: max(10px, env(safe-area-inset-bottom)); display: flex; gap: 6px;
+            overflow-x: auto; overflow-y: hidden; padding: 4px 2px 6px;
+            scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  #picker::-webkit-scrollbar { display: none; }
+  #picker button { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+                   font-family: inherit; font-size: clamp(10px, 3vw, 12px); line-height: 1;
+                   padding: 7px 11px; border-radius: 999px; border: 1px solid #2a6b78;
+                   background: rgba(10,20,28,.6); color: #9fdbe8; white-space: nowrap; cursor: pointer;
+                   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  #picker button .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c, #9fdbe8); }
+  #picker button.on { background: rgba(42,208,230,.25); border-color: #2ad0e6; color: #eafaff; }
+  #hud   { position: fixed; left: 14px; right: 78px; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 46px);
+           color: #5fbfd0; opacity: .55; font-size: clamp(10px, 3vw, 12px); line-height: 1.5;
            pointer-events: none; }
   #ctrls { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom));
            display: flex; flex-direction: column; gap: 10px; }
@@ -47,11 +59,11 @@
 </div>
 <div id="hud"></div>
 <div id="ctrls">
-  <button id="bFocus" aria-label="focus next body">◎</button>
   <button id="bPause" aria-label="pause">⏸</button>
   <button id="bOrbit" aria-label="toggle orbits">◍</button>
   <button id="bReset" aria-label="free roam / reset view">⟲</button>
 </div>
+<div id="picker" aria-label="focus a body"></div>
 
 <script type="importmap">
 { "imports": {
@@ -247,28 +259,57 @@ addEventListener('resize', () => {
 
 // --- on-screen controls (touch has no keyboard) + gesture-aware hint ---
 document.getElementById('hud').innerHTML = isTouch
-  ? 'one finger — rotate · two fingers — pinch · ◎ focus a body · ⟲ free roam'
-  : 'drag orbit · scroll zoom · <b>space</b> pause · <b>o</b> orbits · <b>f</b> focus · <b>r</b> free roam · <b>1/2/3</b> real';
-const bFocus = document.getElementById('bFocus'),
-      bPause = document.getElementById('bPause'),
+  ? 'rotate · pinch · <b>tap a body</b> or pick one below to fly to it'
+  : 'drag orbit · scroll zoom · <b>space</b> pause · <b>o</b> orbits · <b>1/2/3</b> real · <b>click a body</b> or pick below';
+const bPause = document.getElementById('bPause'),
       bOrbit = document.getElementById('bOrbit'),
       bReset = document.getElementById('bReset');
 bPause.onclick = () => { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; };
 bOrbit.onclick = () => { showOrbits = !showOrbits; orbitLines.forEach(o => o.line.visible = showOrbits); bOrbit.style.opacity = showOrbits ? 1 : .4; };
 bReset.onclick = () => { freeRoam(); resetView(); };
 
-// --- focus / free-roam: ◎ cycles the camera to each body (zoom + follow); ⟲ / r returns to free overview ---
+// --- focus / free-roam: tap a body (in the scene or the picker strip) → camera flies to it & follows; ⟲ / r = free roam ---
 const CENTER = new THREE.Vector3(0, -45, 0);
 const RU = { Sun: 'Солнце', Mercury: 'Меркурий', Venus: 'Венера', Earth: 'Земля', Mars: 'Марс',
              Jupiter: 'Юпитер', Saturn: 'Сатурн', Uranus: 'Уран', Neptune: 'Нептун' };
 const focusOrder = [sun, ...planets];
 const focusEl = document.getElementById('focus');
-function paintFocus() { focusEl.textContent = focus ? '◎ ' + (RU[focus.name] || focus.name) : '◎ обзор'; }
-function cycleFocus() { focusIdx = (focusIdx + 1) % focusOrder.length; focus = focusOrder[focusIdx]; retarget = true; paintFocus(); }
-function freeRoam() { focus = null; focusIdx = -1; retarget = true; paintFocus(); }
-bFocus.onclick = cycleFocus;
-renderer.domElement.addEventListener('pointerdown', () => { retarget = false; }, { passive: true });  // yield auto-zoom to the user
+const picker = document.getElementById('picker');
+const pickBtns = [];
+const hex = c => '#' + c.toString(16).padStart(6, '0');
+[null, ...focusOrder].forEach(b => {                       // pill 0 = обзор (free roam), then one per body
+  const btn = document.createElement('button');
+  btn.innerHTML = (b ? `<span class="dot" style="--c:${hex(b.color)}"></span>` : '') + (b ? (RU[b.name] || b.name) : 'обзор');
+  btn.onclick = () => setFocus(b);
+  picker.appendChild(btn); pickBtns.push(btn);
+});
+function paintFocus() {
+  focusEl.textContent = focus ? '◎ ' + (RU[focus.name] || focus.name) : '◎ обзор';
+  const active = focus ? focusOrder.indexOf(focus) + 1 : 0;
+  pickBtns.forEach((b, i) => b.classList.toggle('on', i === active));
+  pickBtns[active].scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+function setFocus(b) { focus = b; focusIdx = b ? focusOrder.indexOf(b) : -1; retarget = true; paintFocus(); }
+function cycleFocus() { setFocus(focusOrder[(focusIdx + 1) % focusOrder.length]); }
+function freeRoam() { setFocus(null); }
+paintFocus();
+
+// tap (not drag) on a body in the scene focuses it — the intuitive path; the picker is the visible one
+const ray = new THREE.Raycaster();
+let dnX = 0, dnY = 0, dnT = 0;
+renderer.domElement.addEventListener('pointerdown', e => { dnX = e.clientX; dnY = e.clientY; dnT = performance.now(); retarget = false; }, { passive: true });
 renderer.domElement.addEventListener('wheel', () => { retarget = false; }, { passive: true });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (performance.now() - dnT > 350 || Math.hypot(e.clientX - dnX, e.clientY - dnY) > 6) return;   // that was a drag, not a tap
+  const rect = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1,
+                                      -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
+  const hit = ray.intersectObjects([sunMesh, ...planetMeshes], true)[0];
+  if (!hit) return;
+  let o = hit.object; while (o && o !== sunMesh && !planetMeshes.includes(o)) o = o.parent;
+  const b = o === sunMesh ? sun : (planetMeshes.includes(o) ? planets[planetMeshes.indexOf(o)] : null);
+  if (b) setFocus(b);
+}, { passive: true });
 
 recompute();   // set the initial (all-stylized) state + frame the view
 
@@ -283,6 +324,7 @@ window.grav = {
     camera.lookAt(t); controls.update();
   },
   setModes(m) { Object.assign(real, m); for (const k in MODE_LABEL) paintMode(k); recompute(); },
+  focusBody(name) { setFocus(name ? focusOrder.find(b => b.name === name) : null); },
   pause(v) { paused = v; },
 };
 
