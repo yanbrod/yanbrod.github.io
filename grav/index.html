@@ -13,6 +13,18 @@
   #title { position: fixed; left: 14px; top: max(12px, env(safe-area-inset-top)); color: #cfe9f0;
            opacity: .85; font-size: clamp(11px, 3.4vw, 13px); letter-spacing: .1em;
            text-transform: uppercase; pointer-events: none; }
+  #modes { position: fixed; left: max(12px, env(safe-area-inset-left));
+           top: calc(max(12px, env(safe-area-inset-top)) + 30px);
+           display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  #modes button { font-family: inherit; font-size: clamp(11px, 3.2vw, 13px); padding: 6px 11px;
+                  border-radius: 999px; border: 1px solid #2a6b78; background: rgba(10,20,28,.55);
+                  color: #7fbccb; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+                  cursor: pointer; white-space: nowrap; line-height: 1; }
+  #modes button.on { background: rgba(42,208,230,.22); border-color: #2ad0e6; color: #e6f8fc; }
+  #focus { margin-top: 4px; font-size: clamp(11px, 3.2vw, 13px); padding: 6px 11px; border-radius: 999px;
+           border: 1px solid #2a6b78; background: rgba(10,20,28,.5); color: #9fdbe8;
+           -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+           pointer-events: none; white-space: nowrap; line-height: 1; }
   #hud   { position: fixed; left: 14px; right: 78px; bottom: max(12px, env(safe-area-inset-bottom));
            color: #5fbfd0; opacity: .6; font-size: clamp(10px, 3vw, 12px); line-height: 1.5;
            pointer-events: none; }
@@ -27,11 +39,18 @@
 </head>
 <body>
 <div id="title">Gravity · how mass curves spacetime</div>
+<div id="modes">
+  <button data-k="mass" aria-label="masses">массы</button>
+  <button data-k="size" aria-label="sizes">размеры</button>
+  <button data-k="dist" aria-label="distances">дистанции</button>
+  <div id="focus">◎ обзор</div>
+</div>
 <div id="hud"></div>
 <div id="ctrls">
+  <button id="bFocus" aria-label="focus next body">◎</button>
   <button id="bPause" aria-label="pause">⏸</button>
   <button id="bOrbit" aria-label="toggle orbits">◍</button>
-  <button id="bReset" aria-label="reset view">⟲</button>
+  <button id="bReset" aria-label="free roam / reset view">⟲</button>
 </div>
 
 <script type="importmap">
@@ -56,16 +75,14 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0e18);
 scene.fog = new THREE.FogExp2(0x0a0e18, 0.0009);
 
-const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 6000);
-const HOME = new THREE.Vector3(0, 150, 360);
-camera.position.copy(HOME);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 8000);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.target.set(0, -45, 0);
 controls.maxPolarAngle = Math.PI * 0.495;   // don't go under the sheet
-controls.minDistance = 140; controls.maxDistance = 1700; controls.enablePan = false;  // sane on touch
+controls.minDistance = 6; controls.maxDistance = 1700; controls.enablePan = false;  // low min → can zoom right up to a focused body
 renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());          // no long-press menu
 
 scene.add(new THREE.AmbientLight(0x3a5a70, 1.9));
@@ -85,29 +102,31 @@ scene.add(sunLight);
   scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbfd8e6, size: 1.5, sizeAttenuation: false })));
 })();
 
-// --- masses. Well = the Newtonian potential of a UNIFORM SPHERE (mass, well-radius R):
-//     outside r≥R:  −G·mass/r        (the familiar 1/r funnel)
-//     inside  r<R:  −G·mass·(3 − r²/R²)/(2R)   (a smooth parabolic bowl → ROUNDED bottom, no spike)
-//     The two join C¹-smoothly at r=R. R is the body's "size"; a big R gives a broad, gentle basin. ---
+// --- bodies. Each carries STYLIZED values (…S — chosen so everything is visible at once) and the REAL
+//     ratios (realM = mass in Earth-masses, realR = radius in Earth-radii, realAU = orbit in AU). The three
+//     toggles swap one axis at a time to its true ratio; .radius/.mass/.orbit below are the EFFECTIVE values
+//     recompute() derives from the toggle state. Well WIDTH (rwell) stays stylized — it's the sheet's dent,
+//     not one of the three physical axes. ---
 const G = 1;
-// the Sun DOMINATES: its 1/r funnel is the slope every planet sits on (that slope is what holds them).
-// (real Sun:planet mass ratio is ~1000:1+, so true-to-scale the planet dimples would vanish — this is a
-//  stylized balance: Sun deep enough to visibly hold the system, planets still denting their spots.)
-const sun = { color: 0xff5a22, radius: 26, mass: 13000, rwell: 100, orbit: 0, speed: 0, ang: 0, x: 0, z: 0 };
+const sun = { name: 'Sun', color: 0xff5a22, rwell: 100, x: 0, z: 0, speed: 0, ang: 0,
+              radiusS: 26, massS: 13000, orbitS: 0, realR: 109.2, realM: 333000, realAU: 0 };
 const planets = [
-  { name: 'Mercury', color: 0x9c8a7a, radius: 3.0, mass: 90,   rwell: 13, orbit: 72,  speed: 0.052 },
-  { name: 'Venus',   color: 0xcaa46a, radius: 5.0, mass: 200,  rwell: 17, orbit: 104, speed: 0.039 },
-  { name: 'Earth',   color: 0x3f86d6, radius: 5.3, mass: 220,  rwell: 18, orbit: 140, speed: 0.031 },
-  { name: 'Mars',    color: 0xc1502e, radius: 4.0, mass: 150,  rwell: 15, orbit: 176, speed: 0.025 },
-  { name: 'Jupiter', color: 0xcaa877, radius: 14,  mass: 1300, rwell: 42, orbit: 244, speed: 0.015 },
-  { name: 'Saturn',  color: 0xd8c48f, radius: 12,  mass: 1000, rwell: 38, orbit: 312, speed: 0.011, ring: true },
-  { name: 'Uranus',  color: 0x9fd8de, radius: 8,   mass: 480,  rwell: 28, orbit: 366, speed: 0.008 },
-  { name: 'Neptune', color: 0x4f6fd6, radius: 8,   mass: 480,  rwell: 28, orbit: 414, speed: 0.006 },
+  { name: 'Mercury', color: 0x9c8a7a, rwell: 13, speed: 0.052, radiusS: 3.0, massS: 90,   orbitS: 72,  realR: 0.383, realM: 0.0553, realAU: 0.387 },
+  { name: 'Venus',   color: 0xcaa46a, rwell: 17, speed: 0.039, radiusS: 5.0, massS: 200,  orbitS: 104, realR: 0.950, realM: 0.815,  realAU: 0.723 },
+  { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000 },
+  { name: 'Mars',    color: 0xc1502e, rwell: 15, speed: 0.025, radiusS: 4.0, massS: 150,  orbitS: 176, realR: 0.532, realM: 0.107,  realAU: 1.524 },
+  { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204 },
+  { name: 'Saturn',  color: 0xd8c48f, rwell: 38, speed: 0.011, radiusS: 12,  massS: 1000, orbitS: 312, realR: 9.14,  realM: 95.2,   realAU: 9.583, ring: true },
+  { name: 'Uranus',  color: 0x9fd8de, rwell: 28, speed: 0.008, radiusS: 8,   massS: 480,  orbitS: 366, realR: 3.98,  realM: 14.5,   realAU: 19.22 },
+  { name: 'Neptune', color: 0x4f6fd6, rwell: 28, speed: 0.006, radiusS: 8,   massS: 480,  orbitS: 414, realR: 3.86,  realM: 17.1,   realAU: 30.07 },
 ];
+const bodies = [sun, ...planets];
+bodies.forEach(b => { b.radius = b.radiusS; b.mass = b.massS; b.orbit = b.orbitS; });
 planets.forEach(p => { p.ang = Math.random() * Math.PI * 2; });
-const masses = [sun, ...planets];
+const masses = bodies;
 
-// sum each body's uniform-sphere well (down = negative y)
+// sum each body's uniform-sphere well (down = negative y):
+//   outside r≥R: −G·mass/r   ·   inside r<R: −G·mass·(3 − r²/R²)/(2R)   (C¹-smooth → rounded bottom)
 function disp(x, z) {
   let y = 0;
   for (const m of masses) {
@@ -117,8 +136,8 @@ function disp(x, z) {
   return y;
 }
 
-// --- the spacetime sheet (wireframe grid, displaced by disp) ---
-const S = 1300, SEG = isTouch ? 150 : 240;   // fewer verts on phones (grid is re-displaced every frame)
+// --- the spacetime sheet (wireframe grid, displaced by disp every frame) ---
+const S = 1300, SEG = isTouch ? 150 : 240;   // fewer verts on phones
 const gridGeo = new THREE.PlaneGeometry(S, S, SEG, SEG);
 const grid = new THREE.Mesh(gridGeo, new THREE.MeshBasicMaterial({ color: 0x2ad0e6, wireframe: true, transparent: true, opacity: 0.6 }));
 grid.rotation.x = -Math.PI / 2;              // lie flat; local +z displacement → world +y
@@ -128,16 +147,16 @@ const gx = new Float32Array(gp.count), gz = new Float32Array(gp.count);
 for (let i = 0; i < gp.count; i++) { gx[i] = gp.getX(i); gz[i] = -gp.getY(i); }   // local (x,y) → world (x,-y)
 function updateGrid() { for (let i = 0; i < gp.count; i++) gp.setZ(i, disp(gx[i], gz[i])); gp.needsUpdate = true; }
 
-// --- sun (glowing) + planets ---
-const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(sun.radius, 40, 40), new THREE.MeshBasicMaterial({ color: sun.color }));
+// --- sun + planets (geometry built at stylized radius; recompute() scales the mesh to the effective size) ---
+const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(sun.radiusS, 40, 40), new THREE.MeshBasicMaterial({ color: sun.color }));
 scene.add(sunMesh);
 
 const planetMeshes = planets.map(p => {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(p.radius, 28, 28),
+  const m = new THREE.Mesh(new THREE.SphereGeometry(p.radiusS, 28, 28),
     new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.85, metalness: 0.05,
       emissive: p.color, emissiveIntensity: 0.4 }));
   if (p.ring) {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(p.radius * 1.5, p.radius * 2.3, 48),
+    const ring = new THREE.Mesh(new THREE.RingGeometry(p.radiusS * 1.5, p.radiusS * 2.3, 48),
       new THREE.MeshBasicMaterial({ color: 0xd8c48f, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
     ring.rotation.x = -Math.PI / 2.3; m.add(ring);
   }
@@ -147,26 +166,115 @@ const planetMeshes = planets.map(p => {
 // --- warped orbit rings drawn on the sheet ---
 let showOrbits = true;
 const orbitLines = planets.map(p => {
-  const N = 200, g = new THREE.BufferGeometry();
+  const N = 220, g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
   const line = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0x49b8ce, transparent: true, opacity: 0.55 }));
   scene.add(line); return { line, N, r: p.orbit };
 });
 
+// --- the three "real vs stylized" toggles ---
+const real = { mass: false, size: false, dist: false };
+const AU_UNIT = 18;      // units per AU when distances are real → Neptune ≈ 541, fits the sheet
+const MIN_VIS = 0.7;     // a body never fully vanishes
+let homeDist = 360;      // camera framing distance for reset (grows when the system spreads out)
+let focus = null, focusIdx = -1, retarget = false;   // camera focus: null = free roam, else a body
+
+function resetView() {
+  camera.position.set(0, homeDist * 0.417, homeDist);   // homeDist=360 reproduces the classic (0,150,360)
+  controls.target.set(0, -45, 0);
+  controls.update();
+}
+
+// derive effective radius/mass/orbit for every body from the toggle state, then reframe
+function recompute() {
+  // 1) orbits — true AU ratios, or the stylized spread
+  for (const p of planets) p.orbit = real.dist ? p.realAU * AU_UNIT : p.orbitS;
+  const orbits = planets.map(p => p.orbit);
+  const innermost = Math.min(...orbits), maxOrbit = Math.max(...orbits);
+
+  // 2) radii — true size ratios (anchored so the Sun keeps its stylized size), or the stylized sizes
+  for (const b of bodies) b.radius = real.size ? Math.max(MIN_VIS, sun.radiusS * (b.realR / sun.realR)) : b.radiusS;
+
+  // 3) if orbits are real the inner system is tiny — shrink every body uniformly so the Sun clears
+  //    the innermost orbit. (At true orbital scale the Sun really IS a dot; this is that fact.)
+  if (real.dist) {
+    const f = Math.min(1, (0.42 * innermost) / sun.radius);
+    for (const b of bodies) b.radius = Math.max(1.0, b.radius * f);
+  }
+
+  // 4) masses (well depth) — Sun anchored; planets by true mass ratio → their dimples all but vanish
+  sun.mass = sun.massS;
+  for (const p of planets) p.mass = real.mass ? sun.massS * (p.realM / sun.realM) : p.massS;
+
+  // 5) push effective sizes to the meshes + orbit lines
+  sunMesh.scale.setScalar(sun.radius / sun.radiusS);
+  planets.forEach((p, i) => planetMeshes[i].scale.setScalar(p.radius / p.radiusS));
+  orbitLines.forEach((o, i) => { o.r = planets[i].orbit; });
+
+  // 6) reframe: zoom out far enough to hold the outermost orbit
+  controls.maxDistance = Math.max(1700, maxOrbit * 1.9);
+  homeDist = real.dist ? Math.max(360, maxOrbit * 1.3) : 360;
+  if (focus) retarget = true; else resetView();   // reframe the focused body at the new scale, else recenter
+}
+
+// --- UI: mode chips ---
+const MODE_LABEL = { mass: 'массы', size: 'размеры', dist: 'дистанции' };
+const modeBtns = {};
+function paintMode(k) {
+  const b = modeBtns[k];
+  b.classList.toggle('on', real[k]);
+  b.textContent = (real[k] ? '● ' : '○ ') + MODE_LABEL[k];
+}
+function toggleMode(k) { real[k] = !real[k]; paintMode(k); recompute(); }
+document.querySelectorAll('#modes button').forEach(b => {
+  modeBtns[b.dataset.k] = b; paintMode(b.dataset.k); b.onclick = () => toggleMode(b.dataset.k);
+});
+
 let paused = false;
 addEventListener('keydown', e => {
-  if (e.code === 'Space') { paused = !paused; e.preventDefault(); }
+  if (e.code === 'Space') { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; e.preventDefault(); }
   if (e.key === 'o') { showOrbits = !showOrbits; orbitLines.forEach(o => o.line.visible = showOrbits); }
-  if (e.key === 'r') { camera.position.copy(HOME); controls.target.set(0, -45, 0); }
+  if (e.key === 'r') { freeRoam(); resetView(); }
+  if (e.key === 'f') cycleFocus();
+  if (e.key === '1') toggleMode('mass');
+  if (e.key === '2') toggleMode('size');
+  if (e.key === '3') toggleMode('dist');
 });
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
 
-// expose a small handle so the camera can be scripted (screenshots from set angles)
+// --- on-screen controls (touch has no keyboard) + gesture-aware hint ---
+document.getElementById('hud').innerHTML = isTouch
+  ? 'one finger — rotate · two fingers — pinch · ◎ focus a body · ⟲ free roam'
+  : 'drag orbit · scroll zoom · <b>space</b> pause · <b>o</b> orbits · <b>f</b> focus · <b>r</b> free roam · <b>1/2/3</b> real';
+const bFocus = document.getElementById('bFocus'),
+      bPause = document.getElementById('bPause'),
+      bOrbit = document.getElementById('bOrbit'),
+      bReset = document.getElementById('bReset');
+bPause.onclick = () => { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; };
+bOrbit.onclick = () => { showOrbits = !showOrbits; orbitLines.forEach(o => o.line.visible = showOrbits); bOrbit.style.opacity = showOrbits ? 1 : .4; };
+bReset.onclick = () => { freeRoam(); resetView(); };
+
+// --- focus / free-roam: ◎ cycles the camera to each body (zoom + follow); ⟲ / r returns to free overview ---
+const CENTER = new THREE.Vector3(0, -45, 0);
+const RU = { Sun: 'Солнце', Mercury: 'Меркурий', Venus: 'Венера', Earth: 'Земля', Mars: 'Марс',
+             Jupiter: 'Юпитер', Saturn: 'Сатурн', Uranus: 'Уран', Neptune: 'Нептун' };
+const focusOrder = [sun, ...planets];
+const focusEl = document.getElementById('focus');
+function paintFocus() { focusEl.textContent = focus ? '◎ ' + (RU[focus.name] || focus.name) : '◎ обзор'; }
+function cycleFocus() { focusIdx = (focusIdx + 1) % focusOrder.length; focus = focusOrder[focusIdx]; retarget = true; paintFocus(); }
+function freeRoam() { focus = null; focusIdx = -1; retarget = true; paintFocus(); }
+bFocus.onclick = cycleFocus;
+renderer.domElement.addEventListener('pointerdown', () => { retarget = false; }, { passive: true });  // yield auto-zoom to the user
+renderer.domElement.addEventListener('wheel', () => { retarget = false; }, { passive: true });
+
+recompute();   // set the initial (all-stylized) state + frame the view
+
+// expose a small handle so the camera / modes can be scripted (screenshots from set angles)
 window.grav = {
-  camera, controls, scene, THREE,
+  camera, controls, scene, THREE, real,
   setView(theta, phi, R) {            // spherical around the target: theta=azimuth, phi=polar from +Y
     const t = controls.target;
     camera.position.set(t.x + R * Math.sin(phi) * Math.sin(theta),
@@ -174,19 +282,9 @@ window.grav = {
                         t.z + R * Math.sin(phi) * Math.cos(theta));
     camera.lookAt(t); controls.update();
   },
+  setModes(m) { Object.assign(real, m); for (const k in MODE_LABEL) paintMode(k); recompute(); },
   pause(v) { paused = v; },
 };
-
-// --- on-screen controls (work on touch, where there's no keyboard) + gesture-aware hint ---
-document.getElementById('hud').innerHTML = isTouch
-  ? 'one finger — rotate · two fingers — pinch to zoom'
-  : 'drag to orbit · scroll to zoom · <b>space</b> pause · <b>o</b> orbits · <b>r</b> reset';
-const bPause = document.getElementById('bPause'),
-      bOrbit = document.getElementById('bOrbit'),
-      bReset = document.getElementById('bReset');
-bPause.onclick = () => { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; };
-bOrbit.onclick = () => { showOrbits = !showOrbits; orbitLines.forEach(o => o.line.visible = showOrbits); bOrbit.style.opacity = showOrbits ? 1 : .4; };
-bReset.onclick = () => { camera.position.copy(HOME); controls.target.set(0, -45, 0); };
 
 function animate() {
   requestAnimationFrame(animate);
@@ -201,6 +299,16 @@ function animate() {
     for (let k = 0; k < o.N; k++) { const a = k / o.N * Math.PI * 2, x = Math.cos(a) * o.r, z = Math.sin(a) * o.r; pos.setXYZ(k, x, disp(x, z) + 0.6, z); }
     pos.needsUpdate = true;
   });
+  // camera: follow the focused body (or ease back to centre), smooth-zooming to frame it
+  const pivot = focus ? (focus === sun ? sunMesh.position : planetMeshes[planets.indexOf(focus)].position) : CENTER;
+  controls.target.lerp(pivot, 0.15);
+  if (retarget) {
+    const want = focus ? Math.max(focus.radius * 6, 14) : homeDist;
+    const off = camera.position.clone().sub(controls.target);
+    const nd = THREE.MathUtils.lerp(off.length(), want, 0.12);
+    camera.position.copy(controls.target).add(off.setLength(nd));
+    if (Math.abs(nd - want) < Math.max(1, want * 0.02)) retarget = false;
+  }
   controls.update();
   renderer.render(scene, camera);
 }
