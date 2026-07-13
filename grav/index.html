@@ -291,7 +291,7 @@ const PROM = (() => {
     const end   = base.clone().addScaledVector(tang, -sep).normalize();
     const sideV = new V().crossVectors(start, end).normalize();       // out of the loop plane → lateral fan
     const baseH = R * (0.7 + rng()*0.7), nStrand = 5 + Math.floor(rng()*4);
-    proms.push({ period: 14 + rng()*16, phase: rng()*40, tail: 0.4 + rng()*0.5, sizeScale: 0.7 + rng()*0.9, on: false, s: 0 });   // slower bursts + per-loop random stream size
+    proms.push({ period: 28 + rng()*32, phase: rng()*80, tail: 0.4 + rng()*0.5, sizeScale: 0.7 + rng()*0.9, on: false, s: 0 });   // slower bursts + per-loop random stream size
     for (let s = 0; s < nStrand; s++) {
       const lateral = (s/(nStrand-1) - 0.5) * R * 0.5, h = baseH * (0.75 + rng()*0.4);
       const pts = new Float32Array((SEG+1)*3), tans = new Float32Array((SEG+1)*3);
