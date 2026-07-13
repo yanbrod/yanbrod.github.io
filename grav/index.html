@@ -55,6 +55,7 @@
   <button data-k="mass" aria-label="masses">массы</button>
   <button data-k="size" aria-label="sizes">размеры</button>
   <button data-k="dist" aria-label="distances">дистанции</button>
+  <button data-k="flat" aria-label="flatten the sheet">плоскость</button>
   <div id="focus">◎ обзор</div>
 </div>
 <div id="hud"></div>
@@ -140,6 +141,7 @@ const masses = bodies;
 // sum each body's uniform-sphere well (down = negative y):
 //   outside r≥R: −G·mass/r   ·   inside r<R: −G·mass·(3 − r²/R²)/(2R)   (C¹-smooth → rounded bottom)
 function disp(x, z) {
+  if (real.flat) return 0;   // "плоскость" toggle — flatten the sheet (no gravity wells)
   let y = 0;
   for (const m of masses) {
     const dx = x - m.x, dz = z - m.z, r = Math.sqrt(dx*dx + dz*dz), R = m.rwell;
@@ -448,7 +450,7 @@ const orbitLines = planets.map(p => {
 });
 
 // --- the three "real vs stylized" toggles ---
-const real = { mass: false, size: false, dist: false };
+const real = { mass: false, size: false, dist: false, flat: false };
 const AU_UNIT = 18;      // units per AU when distances are real → Neptune ≈ 541, fits the sheet
 const MIN_VIS = 0.7;     // a body never fully vanishes
 let homeDist = 360;      // camera framing distance for reset (grows when the system spreads out)
@@ -493,14 +495,14 @@ function recompute() {
 }
 
 // --- UI: mode chips ---
-const MODE_LABEL = { mass: 'массы', size: 'размеры', dist: 'дистанции' };
+const MODE_LABEL = { mass: 'массы', size: 'размеры', dist: 'дистанции', flat: 'плоскость' };
 const modeBtns = {};
 function paintMode(k) {
   const b = modeBtns[k];
   b.classList.toggle('on', real[k]);
   b.textContent = (real[k] ? '● ' : '○ ') + MODE_LABEL[k];
 }
-function toggleMode(k) { real[k] = !real[k]; paintMode(k); recompute(); }
+function toggleMode(k) { real[k] = !real[k]; paintMode(k); if (k !== 'flat') recompute(); }
 document.querySelectorAll('#modes button').forEach(b => {
   modeBtns[b.dataset.k] = b; paintMode(b.dataset.k); b.onclick = () => toggleMode(b.dataset.k);
 });
@@ -514,6 +516,7 @@ addEventListener('keydown', e => {
   if (e.key === '1') toggleMode('mass');
   if (e.key === '2') toggleMode('size');
   if (e.key === '3') toggleMode('dist');
+  if (e.key === '4') toggleMode('flat');
 });
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
