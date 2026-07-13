@@ -125,7 +125,7 @@ const sun = { name: 'Sun', color: 0xff5a22, rwell: 100, x: 0, z: 0, speed: 0, an
 const planets = [
   { name: 'Mercury', color: 0x9c8a7a, rwell: 13, speed: 0.052, radiusS: 3.0, massS: 90,   orbitS: 72,  realR: 0.383, realM: 0.0553, realAU: 0.387 },
   { name: 'Venus',   color: 0xcaa46a, rwell: 17, speed: 0.039, radiusS: 5.0, massS: 200,  orbitS: 104, realR: 0.950, realM: 0.815,  realAU: 0.723 },
-  { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000, texture: 'earth.jpg', spin: 0.004 },
+  { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000, texture: 'earth.jpg', textureNight: 'earth_night.jpg', spin: 0.004 },
   { name: 'Mars',    color: 0xc1502e, rwell: 15, speed: 0.025, radiusS: 4.0, massS: 150,  orbitS: 176, realR: 0.532, realM: 0.107,  realAU: 1.524 },
   { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204 },
   { name: 'Saturn',  color: 0xd8c48f, rwell: 38, speed: 0.011, radiusS: 12,  massS: 1000, orbitS: 312, realR: 9.14,  realM: 95.2,   realAU: 9.583, ring: true },
@@ -166,14 +166,35 @@ scene.add(sunMesh);
 const texLoader = new THREE.TextureLoader();
 const planetMeshes = planets.map(p => {
   let mat, seg = 28;
-  if (p.texture) {                                   // photographic Base Color / albedo (Earth), on standard sphere UV
-    const tex = texLoader.load(p.texture);
-    tex.colorSpace = THREE.SRGBColorSpace;           // albedo is sRGB, not linear
-    tex.wrapS = THREE.RepeatWrapping;                // U = longitude → wraps, seam on the far side
-    tex.wrapT = THREE.ClampToEdgeWrapping;           // V = latitude → clamp at the poles
-    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    mat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, roughness: 1, metalness: 0 });  // white → no tint over the map
-    seg = 64;                                        // smoother sphere for the photo
+  if (p.texture) {                                   // day/night Earth on standard sphere UV (U=longitude, V=latitude)
+    const cfg = t => { t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping;   // longitude wraps → seam on far side
+                       t.wrapT = THREE.ClampToEdgeWrapping;                                    // latitude clamps at the poles
+                       t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t; };
+    const day = cfg(texLoader.load(p.texture)), night = cfg(texLoader.load(p.textureNight));
+    mat = new THREE.ShaderMaterial({
+      uniforms: { dayMap: { value: day }, nightMap: { value: night },
+                  sunDir: { value: new THREE.Vector3(1, 0, 0) }, atmo: { value: new THREE.Color(0x3aa0ff) } },
+      vertexShader: `
+        varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+        void main() { vUv = uv; vN = normalize(mat3(modelMatrix) * normal);
+          vec4 wp = modelMatrix * vec4(position, 1.0); vW = wp.xyz;
+          gl_Position = projectionMatrix * viewMatrix * wp; }`,
+      fragmentShader: `
+        uniform sampler2D dayMap, nightMap; uniform vec3 sunDir, atmo;
+        varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+        void main() {
+          vec3 N = normalize(vN); float ndl = dot(N, normalize(sunDir));
+          float d = smoothstep(-0.12, 0.20, ndl);                       // soft day/night terminator
+          vec3 dayC = texture2D(dayMap, vUv).rgb * (0.55 + 0.45 * clamp(ndl, 0.0, 1.0));
+          vec3 nightC = texture2D(nightMap, vUv).rgb * 1.7;             // city lights on the dark side
+          vec3 col = mix(nightC, dayC, d);
+          vec3 V = normalize(cameraPosition - vW);
+          float rim = pow(1.0 - max(dot(N, V), 0.0), 2.5);              // fresnel limb → atmosphere
+          col += atmo * rim * (0.25 + 0.75 * smoothstep(-0.25, 0.6, ndl));  // faint all round, brighter sunward
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    });
+    p._mat = mat; seg = 64;
   } else {
     mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.85, metalness: 0.05,
       emissive: p.color, emissiveIntensity: 0.4 });
@@ -350,6 +371,7 @@ function animate() {
   planets.forEach((p, i) => {
     planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
     if (!paused && p.spin) planetMeshes[i].rotation.y += p.spin;
+    if (p._mat) p._mat.uniforms.sunDir.value.copy(sunMesh.position).sub(planetMeshes[i].position).normalize();
   });
   orbitLines.forEach(o => {
     const pos = o.line.geometry.attributes.position;
