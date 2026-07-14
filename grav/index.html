@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>grav — how mass curves space</title>
+<meta name="description" content="Интерактивная модель: как масса искривляет пространство-время — Солнечная система на упругом листе, с настоящими массами, размерами и дистанциями по переключателям." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://yanbrod.github.io/grav/" />
+<meta property="og:title" content="grav — how mass curves spacetime" />
+<meta property="og:description" content="Солнечная система на упругом листе пространства-времени: настоящие массы, размеры и дистанции — по переключателям." />
+<meta property="og:image" content="https://yanbrod.github.io/grav/preview.jpeg" />
+<meta name="twitter:card" content="summary_large_image" />
+<title>grav — how mass curves spacetime</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E🪐%3C/text%3E%3C/svg%3E">
 <style>
   html, body { margin: 0; height: 100dvh; background: #0a0e18; overflow: hidden;
                font-family: system-ui, -apple-system, sans-serif;
@@ -52,19 +60,19 @@
 <body>
 <div id="title">Gravity · how mass curves spacetime</div>
 <div id="modes">
-  <button data-k="mass" aria-label="masses">массы</button>
-  <button data-k="size" aria-label="sizes">размеры</button>
-  <button data-k="dist" aria-label="distances">дистанции</button>
-  <button data-k="flat" aria-label="flatten the sheet">плоскость</button>
+  <button data-k="mass" aria-label="настоящие массы">массы</button>
+  <button data-k="size" aria-label="настоящие размеры">размеры</button>
+  <button data-k="dist" aria-label="настоящие дистанции">дистанции</button>
+  <button data-k="flat" aria-label="выпрямить лист">плоскость</button>
   <div id="focus">◎ обзор</div>
 </div>
 <div id="hud"></div>
 <div id="ctrls">
-  <button id="bPause" aria-label="pause">⏸</button>
-  <button id="bOrbit" aria-label="toggle orbits">◍</button>
-  <button id="bReset" aria-label="free roam / reset view">⟲</button>
+  <button id="bPause" aria-label="пауза">⏸</button>
+  <button id="bOrbit" aria-label="показать/скрыть орбиты">◍</button>
+  <button id="bReset" aria-label="свободный обзор / сброс камеры">⟲</button>
 </div>
-<div id="picker" aria-label="focus a body"></div>
+<div id="picker" aria-label="выбор тела"></div>
 
 <script type="importmap">
 { "imports": {
@@ -112,7 +120,7 @@ scene.add(sunLight);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbfd8e6, size: 1.5, sizeAttenuation: false })));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbfd8e6, size: 1.5, sizeAttenuation: false, fog: false })));   // fog: false — иначе туман съедает всё небо
 })();
 
 // --- bodies. Each carries STYLIZED values (…S — chosen so everything is visible at once) and the REAL
@@ -125,7 +133,7 @@ const sun = { name: 'Sun', color: 0xff5a22, rwell: 100, x: 0, z: 0, speed: 0, an
               radiusS: 26, massS: 13000, orbitS: 0, realR: 109.2, realM: 333000, realAU: 0 };
 const planets = [
   { name: 'Mercury', color: 0x9c8a7a, rwell: 13, speed: 0.052, radiusS: 3.0, massS: 90,   orbitS: 72,  realR: 0.383, realM: 0.0553, realAU: 0.387, texture: 'mercury.jpg', textureNight: 'mercury_night.jpg', spin: 0.003, nightBoost: 0.85, atmoStr: 0.0 },
-  { name: 'Venus',   color: 0xcaa46a, rwell: 17, speed: 0.039, radiusS: 5.0, massS: 200,  orbitS: 104, realR: 0.950, realM: 0.815,  realAU: 0.723, texture: 'venus.jpg', textureNight: 'venus_night.jpg', spin: 0.002, atmoColor: 0xe8c88a, atmoStr: 1.3, atmoPow: 2.0, nightBoost: 0.7 },
+  { name: 'Venus',   color: 0xcaa46a, rwell: 17, speed: 0.039, radiusS: 5.0, massS: 200,  orbitS: 104, realR: 0.950, realM: 0.815,  realAU: 0.723, texture: 'venus.jpg', textureNight: 'venus_night.jpg', spin: -0.002, atmoColor: 0xe8c88a, atmoStr: 1.3, atmoPow: 2.0, nightBoost: 0.7 },   // spin < 0: Venus really does rotate retrograde
   { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000, texture: 'earth.jpg', textureNight: 'earth_night.jpg', cloud: 'earth_clouds.jpg', spin: 0.004 },
   { name: 'Mars',    color: 0xc1502e, rwell: 15, speed: 0.025, radiusS: 4.0, massS: 150,  orbitS: 176, realR: 0.532, realM: 0.107,  realAU: 1.524, texture: 'mars.jpg', textureNight: 'mars_night.jpg', spin: 0.004, atmoColor: 0xc07a48, nightBoost: 0.85, atmoStr: 0.6, atmoPow: 5.0 },
   { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204 },
@@ -136,30 +144,59 @@ const planets = [
 const bodies = [sun, ...planets];
 bodies.forEach(b => { b.radius = b.radiusS; b.mass = b.massS; b.orbit = b.orbitS; });
 planets.forEach(p => { p.ang = Math.random() * Math.PI * 2; });
-const masses = bodies;
 
 // sum each body's uniform-sphere well (down = negative y):
 //   outside r≥R: −G·mass/r   ·   inside r<R: −G·mass·(3 − r²/R²)/(2R)   (C¹-smooth → rounded bottom)
-function disp(x, z) {
-  if (real.flat) return 0;   // "плоскость" toggle — flatten the sheet (no gravity wells)
+// wellDepth ignores the "плоскость" toggle (recompute needs the true pit depth for framing); disp respects it.
+function wellDepth(x, z) {
   let y = 0;
-  for (const m of masses) {
+  for (const m of bodies) {
     const dx = x - m.x, dz = z - m.z, r = Math.sqrt(dx*dx + dz*dz), R = m.rwell;
     y -= (r >= R) ? G * m.mass / r : G * m.mass * (3 - (r*r)/(R*R)) / (2 * R);
   }
   return y;
 }
+function disp(x, z) { return real.flat ? 0 : wellDepth(x, z); }
 
-// --- the spacetime sheet (wireframe grid, displaced by disp every frame) ---
+// --- the spacetime sheet. The wells are summed on the GPU: the vertex shader reads 9 (x, z, G·mass, rwell)
+//     uniforms and displaces each vertex itself — no per-frame JS loop over ~58k verts, no buffer re-upload.
+//     Same math as wellDepth(), so the sheet and the bodies always agree. ---
 const S = 1300, SEG = isTouch ? 150 : 240;   // fewer verts on phones
-const gridGeo = new THREE.PlaneGeometry(S, S, SEG, SEG);
-const grid = new THREE.Mesh(gridGeo, new THREE.MeshBasicMaterial({ color: 0x2ad0e6, wireframe: true, transparent: true, opacity: 0.6 }));
+const gridMat = new THREE.ShaderMaterial({
+  wireframe: true, transparent: true, fog: true,
+  uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
+    uWells: { value: bodies.map(() => new THREE.Vector4()) },   // (x, z, G·mass, rwell) per body
+    uFlat:  { value: 0 },                                       // 1 → "плоскость": no displacement
+    uColor: { value: new THREE.Color(0x2ad0e6) },
+  }]),
+  vertexShader: `
+    uniform vec4 uWells[${bodies.length}]; uniform float uFlat;
+    #include <fog_pars_vertex>
+    void main() {
+      vec2 w = vec2(position.x, -position.y);                   // plane local (x,y) → world (x,z)
+      float y = 0.0;
+      for (int i = 0; i < ${bodies.length}; i++) {
+        vec4 m = uWells[i];
+        float r = max(distance(w, m.xy), 1e-4);
+        y -= (r >= m.w) ? m.z / r : m.z * (3.0 - (r*r)/(m.w*m.w)) / (2.0 * m.w);
+      }
+      vec4 mvPosition = modelViewMatrix * vec4(position.xy, mix(y, 0.0, uFlat), 1.0);
+      gl_Position = projectionMatrix * mvPosition;
+      #include <fog_vertex>
+    }`,
+  fragmentShader: `
+    uniform vec3 uColor;
+    #include <fog_pars_fragment>
+    void main() {
+      gl_FragColor = vec4(uColor, 0.6);
+      #include <fog_fragment>
+      #include <colorspace_fragment>
+    }`,
+});
+const grid = new THREE.Mesh(new THREE.PlaneGeometry(S, S, SEG, SEG), gridMat);
 grid.rotation.x = -Math.PI / 2;              // lie flat; local +z displacement → world +y
 scene.add(grid);
-const gp = gridGeo.attributes.position;
-const gx = new Float32Array(gp.count), gz = new Float32Array(gp.count);
-for (let i = 0; i < gp.count; i++) { gx[i] = gp.getX(i); gz[i] = -gp.getY(i); }   // local (x,y) → world (x,-y)
-function updateGrid() { for (let i = 0; i < gp.count; i++) gp.setZ(i, disp(gx[i], gz[i])); gp.needsUpdate = true; }
+const uWells = gridMat.uniforms.uWells.value;
 
 // --- sun: photographic surface + animated "boiling plasma" noise. It's the light emitter, so an unlit shader ---
 const texLoader = new THREE.TextureLoader();
@@ -222,53 +259,6 @@ const sunMat = new THREE.ShaderMaterial({
 });
 const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(sun.radiusS, 48, 48), sunMat);
 scene.add(sunMesh);
-// erupting plasma: an additive shell whose vertices SHOOT OUTWARD along the radius by animated noise → jets, not a shell
-const flameMat = new THREE.ShaderMaterial({
-  uniforms: { time: { value: 0 } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-  vertexShader: `
-    uniform float time; varying float vE;
-    vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
-    vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
-    vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
-    vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
-    float snoise(vec3 v){
-      const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);
-      vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);
-      vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);
-      vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+C.yyy; vec3 x3=x0-D.yyy; i=mod289(i);
-      vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
-      float n_=0.142857142857; vec3 ns=n_*D.wyz-D.xzx;
-      vec4 j=p-49.0*floor(p*ns.z*ns.z); vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);
-      vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);
-      vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);
-      vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));
-      vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
-      vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);
-      vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
-      p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;
-      vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;
-      return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
-    }
-    float fbm(vec3 p){ float f=0.0,a=0.5; for(int i=0;i<4;i++){ f+=a*snoise(p); p*=2.02; a*=0.5; } return f; }
-    void main(){
-      vec3 dir = normalize(position);
-      float n = fbm(dir*3.3 + vec3(time*0.3, time*0.2, 0.0));
-      float mask = smoothstep(0.35, 0.70, n);                             // eruption spots (a few active at any time)
-      float pulse = pow(0.5 + 0.5*sin(time*1.6 + n*15.0 + dir.y*7.0), 2.0);  // decorrelated shoot-out / retract
-      float e = mask * pulse;
-      vE = e;
-      vec3 pos = position + dir * e * ${(sun.radiusS * 1.4).toFixed(2)};  // jets reach far out along the radius
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-    }`,
-  fragmentShader: `
-    varying float vE;
-    void main(){
-      float a = smoothstep(0.015, 0.28, vE);                             // only erupting parts glow
-      vec3 col = mix(vec3(1.0, 0.30, 0.04), vec3(1.0, 0.92, 0.55), vE);   // red base → hot yellow tips
-      gl_FragColor = vec4(col * a, a);
-    }`,
-});
-// plasma jets disabled (flameMat kept above, unused)
 
 // --- solar prominences: plasma flowing inside magnetic loops (per Ian's plan) ---
 // several loops anchored by two footpoints on the surface, arched via sin(πt)^1.35; particles stream along each
@@ -406,7 +396,7 @@ const planetMeshes = planets.map(p => {
     p._mat = mat; seg = 64;
   } else {
     mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.85, metalness: 0.05,
-      emissive: p.color, emissiveIntensity: 0.4 });
+      emissive: p.color, emissiveIntensity: 0.4, fog: false });   // fog: false — кастомные шейдеры планет туман не видят, стандартный материал не должен выбиваться
   }
   const m = new THREE.Mesh(new THREE.SphereGeometry(p.radiusS, seg, seg), mat);
   if (p.cloud) {                                     // drifting cloud shell, lit day/night like the surface
@@ -458,14 +448,17 @@ let focus = null, focusIdx = -1, retarget = false;   // camera focus: null = fre
 
 function resetView() {
   camera.position.set(0, homeDist * 0.417, homeDist);   // homeDist=360 reproduces the classic (0,150,360)
-  controls.target.set(0, -45, 0);
+  controls.target.copy(CENTER);
   controls.update();
 }
 
-// derive effective radius/mass/orbit for every body from the toggle state, then reframe
-function recompute() {
-  // 1) orbits — true AU ratios, or the stylized spread
-  for (const p of planets) p.orbit = real.dist ? p.realAU * AU_UNIT : p.orbitS;
+// derive effective radius/mass/orbit for every body from the toggle state, then reframe.
+// reframe=false → keep the user's camera (mass/size flips don't change the layout enough to yank the view)
+function recompute(reframe = true) {
+  // 1) orbits — true AU ratios, or the stylized spread; refresh positions right away so a scale
+  //    flip lands even while paused (animate only advances .ang when running)
+  for (const p of planets) { p.orbit = real.dist ? p.realAU * AU_UNIT : p.orbitS;
+                             p.x = Math.cos(p.ang) * p.orbit; p.z = Math.sin(p.ang) * p.orbit; }
   const orbits = planets.map(p => p.orbit);
   const innermost = Math.min(...orbits), maxOrbit = Math.max(...orbits);
 
@@ -488,10 +481,13 @@ function recompute() {
   planets.forEach((p, i) => planetMeshes[i].scale.setScalar(p.radius / p.radiusS));
   orbitLines.forEach((o, i) => { o.r = planets[i].orbit; });
 
-  // 6) reframe: zoom out far enough to hold the outermost orbit
+  // 6) reframe: zoom out far enough to hold the outermost orbit. With real distances the whole inner
+  //    system sinks ~250 units into the sun's (still stylized) well — aim the camera INTO the pit,
+  //    otherwise the home view frames an empty funnel with an invisible dot at the bottom.
   controls.maxDistance = Math.max(1700, maxOrbit * 1.9);
   homeDist = real.dist ? Math.max(360, maxOrbit * 1.3) : 360;
-  if (focus) retarget = true; else resetView();   // reframe the focused body at the new scale, else recenter
+  CENTER.set(0, real.dist ? Math.min(-45, wellDepth(0, 0) * 0.7) : -45, 0);
+  if (focus) retarget = true; else if (reframe) resetView();   // reframe the focused body at the new scale, else recenter
 }
 
 // --- UI: mode chips ---
@@ -502,13 +498,17 @@ function paintMode(k) {
   b.classList.toggle('on', real[k]);
   b.textContent = (real[k] ? '● ' : '○ ') + MODE_LABEL[k];
 }
-function toggleMode(k) { real[k] = !real[k]; paintMode(k); if (k !== 'flat') recompute(); }
+function toggleMode(k) {
+  real[k] = !real[k]; paintMode(k); linesDirty = true;
+  if (k !== 'flat') recompute(k === 'dist');   // only a distance flip re-frames the camera
+}
 document.querySelectorAll('#modes button').forEach(b => {
   modeBtns[b.dataset.k] = b; paintMode(b.dataset.k); b.onclick = () => toggleMode(b.dataset.k);
 });
 
 let paused = false;
 addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;   // don't shadow browser shortcuts (⌘R, ctrl+1…)
   if (e.code === 'Space') { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; e.preventDefault(); }
   if (e.key === 'o') { showOrbits = !showOrbits; orbitLines.forEach(o => o.line.visible = showOrbits); }
   if (e.key === 'r') { freeRoam(); resetView(); }
@@ -520,18 +520,19 @@ addEventListener('keydown', e => {
 });
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));   // окно могли перетащить на экран с другим DPR
   renderer.setSize(innerWidth, innerHeight);
 });
 
 // --- on-screen controls (touch has no keyboard) + gesture-aware hint ---
 document.getElementById('hud').innerHTML = isTouch
-  ? 'rotate · pinch · <b>tap a body</b> or pick one below to fly to it'
-  : 'drag orbit · scroll zoom · <b>space</b> pause · <b>o</b> orbits · <b>1/2/3</b> real · <b>click a body</b> or pick below';
+  ? 'вращай пальцем · щипок — зум · <b>тапни тело</b> или выбери снизу'
+  : 'мышь — орбита · колесо — зум · <b>пробел</b> пауза · <b>o</b> орбиты · <b>1/2/3/4</b> режимы · <b>f</b> фокус · <b>r</b> обзор · <b>клик по телу</b> или снизу';
 const bPause = document.getElementById('bPause'),
       bOrbit = document.getElementById('bOrbit'),
       bReset = document.getElementById('bReset');
 bPause.onclick = () => { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; };
-bOrbit.onclick = () => { showOrbits = !showOrbits; orbitLines.forEach(o => o.line.visible = showOrbits); bOrbit.style.opacity = showOrbits ? 1 : .4; };
+bOrbit.onclick = () => { showOrbits = !showOrbits; linesDirty = true; orbitLines.forEach(o => o.line.visible = showOrbits); bOrbit.style.opacity = showOrbits ? 1 : .4; };
 bReset.onclick = () => { freeRoam(); resetView(); };
 
 // --- focus / free-roam: tap a body (in the scene or the picker strip) → camera flies to it & follows; ⟲ / r = free roam ---
@@ -563,14 +564,15 @@ paintFocus();
 // tap (not drag) on a body in the scene focuses it — the intuitive path; the picker is the visible one
 const ray = new THREE.Raycaster();
 let dnX = 0, dnY = 0, dnT = 0;
-renderer.domElement.addEventListener('pointerdown', e => { dnX = e.clientX; dnY = e.clientY; dnT = performance.now(); retarget = false; }, { passive: true });
+renderer.domElement.addEventListener('pointerdown', e => { if (!e.isPrimary) return; dnX = e.clientX; dnY = e.clientY; dnT = performance.now(); retarget = false; }, { passive: true });
 renderer.domElement.addEventListener('wheel', () => { retarget = false; }, { passive: true });
 renderer.domElement.addEventListener('pointerup', e => {
+  if (!e.isPrimary) return;                                                                        // второй палец щипка — не тап
   if (performance.now() - dnT > 350 || Math.hypot(e.clientX - dnX, e.clientY - dnY) > 6) return;   // that was a drag, not a tap
   const rect = renderer.domElement.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1,
                                       -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
-  const hit = ray.intersectObjects([sunMesh, ...planetMeshes], true)[0];
+  const hit = ray.intersectObjects([sunMesh, ...planetMeshes], true).find(h => h.object !== prominences);   // спящие (невидимые) частицы протуберанцев — не мишень
   if (!hit) return;
   let o = hit.object; while (o && o !== sunMesh && !planetMeshes.includes(o)) o = o.parent;
   const b = o === sunMesh ? sun : (planetMeshes.includes(o) ? planets[planetMeshes.indexOf(o)] : null);
@@ -591,43 +593,63 @@ window.grav = {
   },
   setModes(m) { Object.assign(real, m); for (const k in MODE_LABEL) paintMode(k); recompute(); },
   focusBody(name) { setFocus(name ? focusOrder.find(b => b.name === name) : null); },
-  pause(v) { paused = v; },
+  pause(v) { paused = v; bPause.textContent = v ? '▶' : '⏸'; },
 };
 
-function animate() {
-  requestAnimationFrame(animate);
-  if (!paused) for (const p of planets) { p.ang += p.speed * 0.02; p.x = Math.cos(p.ang) * p.orbit; p.z = Math.sin(p.ang) * p.orbit; }
-  updateGrid();
-  const sy = disp(0, 0);
-  sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
-  sunLight.position.set(0, sy + sun.radius, 0);
-  if (!paused) { sunMat.uniforms.time.value += 0.026; sunMesh.rotation.y += 0.0012; }   // boil + slow axial spin
-  PROM.update(sunMat.uniforms.time.value);   // flow plasma along the magnetic loops
-  planets.forEach((p, i) => {
-    planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
-    if (!paused && p.spin) planetMeshes[i].rotation.y += p.spin;
-    if (p._mat) {
-      const sdv = p._mat.uniforms.sunDir.value.copy(sunMesh.position).sub(planetMeshes[i].position);
-      sdv.y = 0; sdv.normalize();                                     // light in-plane → terminator through the poles (grazing twilight, not permanent night)
-      if (p._cloudMat) {
-        p._cloudMat.uniforms.sunDir.value.copy(sdv);
-        if (!paused) p._cloud.rotation.y += 0.0006;                   // clouds drift relative to the surface
-      }
-    }
-  });
+// all speeds are delta-time based. F = "frames at 120 Hz": the constants below were tuned on a 120 Hz
+// display, so F keeps that exact look on any refresh rate (60 Hz laptops, 144 Hz monitors, throttled tabs).
+const clock = new THREE.Clock();
+let linesDirty = true;                     // orbit lines need a rebuild (scale/flat toggled, or just unhidden)
+const _prevT = new THREE.Vector3(), _dT = new THREE.Vector3(), _off = new THREE.Vector3();   // no per-frame allocs
+
+function updateOrbitLines() {
   orbitLines.forEach(o => {
     const pos = o.line.geometry.attributes.position;
     for (let k = 0; k < o.N; k++) { const a = k / o.N * Math.PI * 2, x = Math.cos(a) * o.r, z = Math.sin(a) * o.r; pos.setXYZ(k, x, disp(x, z) + 0.6, z); }
     pos.needsUpdate = true;
   });
-  // camera: follow the focused body (or ease back to centre), smooth-zooming to frame it
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);   // clamp: a backgrounded tab must not fast-forward on return
+  const F = dt * 120;
+  // ang -= : orbital motion now matches the spins (both CCW from the north), as in the real system
+  if (!paused) for (const p of planets) p.ang -= p.speed * 0.02 * F;
+  for (const p of planets) { p.x = Math.cos(p.ang) * p.orbit; p.z = Math.sin(p.ang) * p.orbit; }   // outside the pause guard: scale toggles land even while paused
+  bodies.forEach((b, i) => uWells[i].set(b.x, b.z, G * b.mass, b.rwell));   // feed the GPU sheet
+  gridMat.uniforms.uFlat.value = real.flat ? 1 : 0;
+  const sy = disp(0, 0);
+  sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
+  sunLight.position.copy(sunMesh.position);
+  if (!paused) {
+    sunMat.uniforms.time.value += 0.026 * F; sunMesh.rotation.y += 0.0012 * F;   // boil + slow axial spin
+    PROM.update(sunMat.uniforms.time.value);   // flow plasma along the magnetic loops (frozen buffers keep the picture while paused)
+  }
+  planets.forEach((p, i) => {
+    planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
+    if (!paused && p.spin) planetMeshes[i].rotation.y += p.spin * F;
+    if (p._mat) {
+      const sdv = p._mat.uniforms.sunDir.value.copy(sunMesh.position).sub(planetMeshes[i].position);
+      sdv.y = 0; sdv.normalize();                                     // light in-plane → terminator through the poles (grazing twilight, not permanent night)
+      if (p._cloudMat) {
+        p._cloudMat.uniforms.sunDir.value.copy(sdv);
+        if (!paused) p._cloud.rotation.y += 0.0006 * F;               // clouds drift relative to the surface
+      }
+    }
+  });
+  if (showOrbits && (!paused || linesDirty)) { updateOrbitLines(); linesDirty = false; }   // hidden or static → skip
+  // camera: follow the focused body (or ease back to centre), smooth-zooming to frame it.
+  // the camera translates WITH the target, so the follow distance holds even for fast planets.
   const pivot = focus ? (focus === sun ? sunMesh.position : planetMeshes[planets.indexOf(focus)].position) : CENTER;
-  controls.target.lerp(pivot, 0.15);
+  _prevT.copy(controls.target);
+  controls.target.lerp(pivot, 1 - Math.pow(0.85, F));                 // rate-independent “0.15 per 120 Hz frame”
+  camera.position.add(_dT.subVectors(controls.target, _prevT));
   if (retarget) {
     const want = focus ? Math.max(focus.radius * 6, 14) : homeDist;
-    const off = camera.position.clone().sub(controls.target);
-    const nd = THREE.MathUtils.lerp(off.length(), want, 0.12);
-    camera.position.copy(controls.target).add(off.setLength(nd));
+    _off.subVectors(camera.position, controls.target);
+    const nd = THREE.MathUtils.lerp(_off.length(), want, 1 - Math.pow(0.88, F));
+    camera.position.copy(controls.target).add(_off.setLength(nd));
     if (Math.abs(nd - want) < Math.max(1, want * 0.02)) retarget = false;
   }
   controls.update();
