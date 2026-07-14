@@ -63,7 +63,7 @@
   <button data-k="mass" aria-label="настоящие массы">массы</button>
   <button data-k="size" aria-label="настоящие размеры">размеры</button>
   <button data-k="dist" aria-label="настоящие дистанции">дистанции</button>
-  <button data-k="flat" aria-label="выпрямить лист">плоскость</button>
+  <button data-k="flat" aria-label="убрать лист пространства-времени">плоскость</button>
   <div id="focus">◎ обзор</div>
 </div>
 <div id="hud"></div>
@@ -752,7 +752,8 @@ function animate() {
   if (!paused) for (const p of planets) p.ang -= p.speed * 0.02 * F;
   for (const p of planets) orbXZ(p, p);   // Kepler-позиция; вне pause-guard: переключения масштабов работают и на паузе
   bodies.forEach((b, i) => uWells[i].set(b.x, b.z, G * b.mass, b.rwell));   // feed the GPU sheet
-  gridMat.uniforms.uFlat.value = real.flat ? 1 : 0;
+  gridMat.uniforms.uFlat.value = real.flat ? 1 : 0;   // пояса делят этот uniform — выпрямляет и их
+  grid.visible = !real.flat;                          // «плоскость» = убрать лист совсем: чистая карта системы
   const sy = disp(0, 0);
   sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
   sunLight.position.copy(sunMesh.position);
