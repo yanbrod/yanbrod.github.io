@@ -548,7 +548,6 @@ BELTS.forEach((bd, i) => {
 // --- the three "real vs stylized" toggles ---
 const real = { mass: false, size: false, dist: false, flat: false };
 const AU_UNIT = 18;      // units per AU when distances are real → Neptune ≈ 541, fits the sheet
-const MIN_VIS = 0.7;     // a body never fully vanishes
 let homeDist = 360;      // camera framing distance for reset (grows when the system spreads out)
 let focus = null, focusIdx = -1, retarget = false;   // camera focus: null = free roam, else a body
 
@@ -574,14 +573,17 @@ function recompute(reframe = true) {
     m.uniforms.uR1.value = real.dist ? bd.realA1 * AU_UNIT : bd.styl1;
   });
 
-  // 2) radii — true size ratios (anchored so the Sun keeps its stylized size), or the stylized sizes
-  for (const b of bodies) b.radius = real.size ? Math.max(MIN_VIS, sun.radiusS * (b.realR / sun.realR)) : b.radiusS;
+  // 2) radii — true size ratios (anchored so the Sun keeps its stylized size), or the stylized sizes.
+  //    Real sizes are UNCLAMPED: Земля — 0.24% солнечного радиуса, и её почти не видно. Так и должно быть.
+  for (const b of bodies) b.radius = real.size ? sun.radiusS * (b.realR / sun.realR) : b.radiusS;
 
   // 3) if orbits are real the inner system is tiny — shrink every body uniformly so the Sun clears
   //    the innermost orbit. (At true orbital scale the Sun really IS a dot; this is that fact.)
+  //    With real sizes the shrink is one shared factor and nothing is clamped: все взаимные
+  //    пропорции тел честные, завышено (одинаково для всех) только отношение «размер : дистанция».
   if (real.dist) {
     const f = Math.min(1, (0.42 * innermost) / sun.radius);
-    for (const b of bodies) b.radius = Math.max(1.0, b.radius * f);
+    for (const b of bodies) b.radius = real.size ? b.radius * f : Math.max(1.0, b.radius * f);
   }
 
   // 4) masses (well depth) — Sun anchored; planets by true mass ratio → their dimples all but vanish
@@ -599,7 +601,8 @@ function recompute(reframe = true) {
   controls.maxDistance = Math.max(1700, maxOrbit * 1.9);
   homeDist = real.dist ? Math.max(360, maxOrbit * 1.3) : 360;
   CENTER.set(0, real.dist ? Math.min(-45, wellDepth(0, 0) * 0.7) : -45, 0);
-  if (focus) retarget = true; else if (reframe) resetView();   // reframe the focused body at the new scale, else recenter
+  if (focus) { focusZoomLimits(); retarget = true; }           // reframe the focused body at the new scale…
+  else if (reframe) resetView();                               // …else recenter
 }
 
 // --- UI: mode chips ---
@@ -668,7 +671,10 @@ function paintFocus() {
   pickBtns.forEach((b, i) => b.classList.toggle('on', i === active));
   pickBtns[active].scrollIntoView({ block: 'nearest', inline: 'center' });
 }
-function setFocus(b) { focus = b; focusIdx = b ? focusOrder.indexOf(b) : -1; retarget = true; paintFocus(); }
+function focusZoomLimits() {   // подпустить камеру к телу любого размера (в честных режимах Земля — сотые доли единицы)
+  controls.minDistance = focus ? Math.min(6, Math.max(0.12, focus.radius * 1.2)) : 6;
+}
+function setFocus(b) { focus = b; focusIdx = b ? focusOrder.indexOf(b) : -1; focusZoomLimits(); retarget = true; paintFocus(); }
 function cycleFocus() { setFocus(focusOrder[(focusIdx + 1) % focusOrder.length]); }
 function freeRoam() { setFocus(null); }
 paintFocus();
@@ -760,11 +766,11 @@ function animate() {
   controls.target.lerp(pivot, 1 - Math.pow(0.85, F));                 // rate-independent “0.15 per 120 Hz frame”
   camera.position.add(_dT.subVectors(controls.target, _prevT));
   if (retarget) {
-    const want = focus ? Math.max(focus.radius * 6, 14) : homeDist;
+    const want = focus ? Math.max(focus.radius * 7, controls.minDistance * 2.2) : homeDist;   // и для крошек честных размеров
     _off.subVectors(camera.position, controls.target);
     const nd = THREE.MathUtils.lerp(_off.length(), want, 1 - Math.pow(0.88, F));
     camera.position.copy(controls.target).add(_off.setLength(nd));
-    if (Math.abs(nd - want) < Math.max(1, want * 0.02)) retarget = false;
+    if (Math.abs(nd - want) < Math.max(want * 0.04, 0.02)) retarget = false;
   }
   controls.update();
   renderer.render(scene, camera);
