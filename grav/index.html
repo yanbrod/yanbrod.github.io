@@ -130,16 +130,17 @@ scene.add(sunLight);
 //     not one of the three physical axes. ---
 const G = 1;
 const sun = { name: 'Sun', color: 0xff5a22, rwell: 100, x: 0, z: 0, speed: 0, ang: 0,
-              radiusS: 26, massS: 13000, orbitS: 0, realR: 109.2, realM: 333000, realAU: 0 };
+              radiusS: 26, massS: 13000, orbitS: 0, realR: 109.2, realM: 332946, realAU: 0 };   // 1.98841e30 kg / 5.97217e24 kg (JPL)
 const planets = [
   { name: 'Mercury', color: 0x9c8a7a, rwell: 13, speed: 0.052, radiusS: 3.0, massS: 90,   orbitS: 72,  realR: 0.383, realM: 0.0553, realAU: 0.387, texture: 'mercury.jpg', textureNight: 'mercury_night.jpg', spin: 0.003, nightBoost: 0.85, atmoStr: 0.0 },
   { name: 'Venus',   color: 0xcaa46a, rwell: 17, speed: 0.039, radiusS: 5.0, massS: 200,  orbitS: 104, realR: 0.950, realM: 0.815,  realAU: 0.723, texture: 'venus.jpg', textureNight: 'venus_night.jpg', spin: -0.002, atmoColor: 0xe8c88a, atmoStr: 1.3, atmoPow: 2.0, nightBoost: 0.7 },   // spin < 0: Venus really does rotate retrograde
   { name: 'Earth',   color: 0x3f86d6, rwell: 18, speed: 0.031, radiusS: 5.3, massS: 220,  orbitS: 140, realR: 1.000, realM: 1.000,  realAU: 1.000, texture: 'earth.jpg', textureNight: 'earth_night.jpg', cloud: 'earth_clouds.jpg', spin: 0.004 },
   { name: 'Mars',    color: 0xc1502e, rwell: 15, speed: 0.025, radiusS: 4.0, massS: 150,  orbitS: 176, realR: 0.532, realM: 0.107,  realAU: 1.524, texture: 'mars.jpg', textureNight: 'mars_night.jpg', spin: 0.004, atmoColor: 0xc07a48, nightBoost: 0.85, atmoStr: 0.6, atmoPow: 5.0 },
-  { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204 },
-  { name: 'Saturn',  color: 0xd8c48f, rwell: 38, speed: 0.011, radiusS: 12,  massS: 1000, orbitS: 312, realR: 9.14,  realM: 95.2,   realAU: 9.583, ring: true },
+  { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204, texture: 'jupiter.jpg', textureNight: 'jupiter_night.jpg', spin: 0.01, nightBoost: 0.9, atmoColor: 0xd8b08a, atmoStr: 0.45, atmoPow: 3.5 },   // spin 0.01: сутки 9.9 ч, самый быстрый волчок системы
+  { name: 'Saturn',  color: 0xd8c48f, rwell: 38, speed: 0.011, radiusS: 12,  massS: 1000, orbitS: 312, realR: 9.14,  realM: 95.2,   realAU: 9.583, ring: true, texture: 'saturn.jpg', spin: 0.009, nightBoost: 0.12, atmoColor: 0xe6d3a3, atmoStr: 0.3, atmoPow: 3.5 },   // без ночной карты: ночь = день × nightBoost; сутки 10.7 ч
   { name: 'Uranus',  color: 0x9fd8de, rwell: 28, speed: 0.008, radiusS: 8,   massS: 480,  orbitS: 366, realR: 3.98,  realM: 14.5,   realAU: 19.22 },
   { name: 'Neptune', color: 0x4f6fd6, rwell: 28, speed: 0.006, radiusS: 8,   massS: 480,  orbitS: 414, realR: 3.86,  realM: 17.1,   realAU: 30.07 },
+  { name: 'Pluto',   color: 0xc9b295, rwell: 8,  speed: 0.005, radiusS: 2.2, massS: 30,   orbitS: 470, realR: 0.187, realM: 0.00218, realAU: 39.48 },   // дом — в поясе Койпера (orbitS внутри его стилизованной полосы)
 ];
 const bodies = [sun, ...planets];
 bodies.forEach(b => { b.radius = b.radiusS; b.mass = b.massS; b.orbit = b.orbitS; });
@@ -161,7 +162,7 @@ function disp(x, z) { return real.flat ? 0 : wellDepth(x, z); }
 // --- the spacetime sheet. The wells are summed on the GPU: the vertex shader reads 9 (x, z, G·mass, rwell)
 //     uniforms and displaces each vertex itself — no per-frame JS loop over ~58k verts, no buffer re-upload.
 //     Same math as wellDepth(), so the sheet and the bodies always agree. ---
-const S = 1300, SEG = isTouch ? 150 : 240;   // fewer verts on phones
+const S = 1900, SEG = isTouch ? 200 : 320;   // wide enough for Pluto + the Kuiper belt at real distances; fewer verts on phones
 const gridMat = new THREE.ShaderMaterial({
   wireframe: true, transparent: true, fog: true,
   uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
@@ -368,7 +369,8 @@ const planetMeshes = planets.map(p => {
     const cfg = t => { t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping;   // longitude wraps → seam on far side
                        t.wrapT = THREE.ClampToEdgeWrapping;                                    // latitude clamps at the poles
                        t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t; };
-    const day = cfg(texLoader.load(p.texture)), night = cfg(texLoader.load(p.textureNight));
+    const day = cfg(texLoader.load(p.texture)),
+          night = p.textureNight ? cfg(texLoader.load(p.textureNight)) : day;   // нет ночной карты (газовые гиганты) → та же дневная, приглушённая малым nightBoost
     mat = new THREE.ShaderMaterial({
       uniforms: { dayMap: { value: day }, nightMap: { value: night },
                   sunDir: { value: new THREE.Vector3(1, 0, 0) }, atmo: { value: new THREE.Color(p.atmoColor ?? 0x3aa0ff) }, nightBoost: { value: p.nightBoost ?? 1.7 },
@@ -423,8 +425,29 @@ const planetMeshes = planets.map(p => {
     m.add(p._cloud);
   }
   if (p.ring) {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(p.radiusS * 1.5, p.radiusS * 2.3, 48),
-      new THREE.MeshBasicMaterial({ color: 0xd8c48f, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
+    // кольца по-настоящему: радиальные UV + полоса-текстура с зонами C (тусклая), B (яркая),
+    // щелью Кассини и кольцом A со щелью Энке; радиусы — в пропорциях настоящих (1.24–2.27 R)
+    const r0 = p.radiusS * 1.24, r1 = p.radiusS * 2.27;
+    const rg = new THREE.RingGeometry(r0, r1, 96, 1);
+    const rpos = rg.attributes.position, ruv = rg.attributes.uv;
+    for (let i = 0; i < rpos.count; i++) ruv.setXY(i, (Math.hypot(rpos.getX(i), rpos.getY(i)) - r0) / (r1 - r0), 0.5);
+    const rc = document.createElement('canvas'); rc.width = 512; rc.height = 1;
+    const stops = [[0,0.04],[0.05,0.12],[0.28,0.3],[0.30,0.75],[0.55,0.7],[0.685,0.62],[0.7,0.06],[0.76,0.06],[0.78,0.5],[0.94,0.48],[0.948,0.1],[0.958,0.42],[0.99,0.3],[1,0]];
+    const alphaAt = x => { for (let s = 1; s < stops.length; s++) if (x <= stops[s][0]) {
+      const [x0,a0] = stops[s-1], [x1,a1] = stops[s]; return a0 + (a1-a0)*(x-x0)/((x1-x0) || 1); } return 0; };
+    const im = rc.getContext('2d').createImageData(512, 1);
+    for (let x = 0; x < 512; x++) {
+      const t = x / 511;
+      const a = alphaAt(t) * (0.86 + 0.14*Math.sin(t*180 + Math.sin(t*57)*2));   // тонкие бороздки
+      const zone = t < 0.28 ? 0.8 : (t < 0.7 ? 1.0 : 0.92);                      // C темнее, B ярче, A между
+      const shade = (205 + 22*Math.sin(t*40 + 1.7)) * zone;
+      im.data[x*4] = shade; im.data[x*4+1] = shade*0.9; im.data[x*4+2] = shade*0.72;
+      im.data[x*4+3] = Math.max(0, Math.min(1, a)) * 255;
+    }
+    rc.getContext('2d').putImageData(im, 0, 0);
+    const rtex = new THREE.CanvasTexture(rc);
+    rtex.colorSpace = THREE.SRGBColorSpace;
+    const ring = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ map: rtex, side: THREE.DoubleSide, transparent: true, depthWrite: false }));
     ring.rotation.x = -Math.PI / 2.3; m.add(ring);
   }
   scene.add(m); return m;
@@ -437,6 +460,89 @@ const orbitLines = planets.map(p => {
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
   const line = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0x49b8ce, transparent: true, opacity: 0.55 }));
   scene.add(line); return { line, N, r: p.orbit };
+});
+
+// --- asteroid belts: the main belt (between Mars and Jupiter) and the Kuiper belt (beyond Neptune —
+//     Pluto's home). Pure GPU dust: each particle carries its lane t within the belt, a start angle
+//     and a small height scatter; the vertex shader derives x,z from the current belt radii
+//     (uR0/uR1 — swapped by the "дистанции" toggle) and drops the point onto the sheet with the
+//     same well sum as the grid. Per-frame JS cost: one shared time uniform. ---
+const BELT_TIME = { value: 0 };
+const SUN_POS = { value: new THREE.Vector3() };   // world position of the sun, fed each frame — lights the rocks
+const BELTS = [
+  { styl0: 196, styl1: 228, realA0: 2.2, realA1: 3.3, N: isTouch ? 900 : 1600,  color: 0xa08a6e, color2: 0x5f5347, w0: 0.021 },   // main belt, 2.2–3.3 AU — rock/rust
+  { styl0: 436, styl1: 505, realA0: 30,  realA1: 50,  N: isTouch ? 1100 : 2000, color: 0xcfe2ee, color2: 0x7f98ac, w0: 0.0052 },  // Kuiper belt, 30–50 AU — ice
+];
+const beltMats = BELTS.map(bd => new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { uWells: { value: uWells },                       // тот же массив ям, что у листа — одно обновление кормит всё
+              uFlat: gridMat.uniforms.uFlat,                   // общий объект-uniform: флаг «плоскости»
+              uT: BELT_TIME, uSun: SUN_POS,
+              uR0: { value: bd.styl0 }, uR1: { value: bd.styl1 }, uW0: { value: bd.w0 },
+              uColor: { value: new THREE.Color(bd.color) }, uColor2: { value: new THREE.Color(bd.color2) } },
+  vertexShader: `
+    uniform vec4 uWells[${bodies.length}]; uniform float uFlat, uT, uR0, uR1, uW0;
+    uniform vec3 uSun, uColor, uColor2;
+    attribute float aT, aAng, aH, aSize, aSeed;
+    varying vec3 vCol; varying vec3 vSunV; varying float vSeed;
+    void main() {
+      float r = mix(uR0, uR1, aT);
+      float a = aAng - uT * uW0 * (1.0 - 0.35 * aT);           // внутренние дорожки быстрее → пояс «сдвигается» как настоящий
+      vec2 p = vec2(cos(a), sin(a)) * r;
+      float y = 0.0;
+      for (int i = 0; i < ${bodies.length}; i++) {
+        vec4 m = uWells[i];
+        float rr = max(distance(p, m.xy), 1e-4);
+        y -= (rr >= m.w) ? m.z / rr : m.z * (3.0 - (rr*rr)/(m.w*m.w)) / (2.0 * m.w);
+      }
+      y = mix(y, 0.0, uFlat) + aH + 0.8;                       // едет по листу, лёгкий вертикальный разброс
+      vec4 mv = modelViewMatrix * vec4(p.x, y, p.y, 1.0);
+      gl_PointSize = min(aSize * (780.0 / -mv.z), 34.0);       // clamp: вблизи пусть будут камешки, а не экранные призраки
+      gl_Position = projectionMatrix * mv;
+      vCol = mix(uColor, uColor2, fract(aSeed * 0.618));       // разнобой оттенков внутри пояса
+      vSunV = normalize((viewMatrix * vec4(uSun, 1.0)).xyz - mv.xyz);   // направление на Солнце в view-space — для освещения спрайта
+      vSeed = aSeed;
+    }`,
+  fragmentShader: `
+    uniform float uT;
+    varying vec3 vCol; varying vec3 vSunV; varying float vSeed;
+    void main() {
+      vec2 q = gl_PointCoord - 0.5;
+      float d2 = dot(q, q);
+      if (d2 > 0.25) discard;
+      // неровный, медленно кувыркающийся силуэт вместо кружка
+      float ang = atan(q.y, q.x) + uT * (fract(vSeed * 0.37) - 0.5) * 0.5;
+      float edge = 0.5 * (0.76 + 0.10*sin(ang*3.0 + vSeed) + 0.07*sin(ang*5.0 + vSeed*1.7) + 0.04*sin(ang*8.0 + vSeed*2.3));   // «картофелина», не звёздочка
+      float rr = sqrt(d2);
+      if (rr > edge) discard;
+      // сферический импостор: нормаль из точки спрайта, свет от Солнца → освещённый бок / тёмный бок
+      vec3 n = normalize(vec3(2.0*q.x, -2.0*q.y, sqrt(max(0.0, 1.0 - 4.0*d2))));
+      float diff = max(dot(n, vSunV), 0.0);
+      vec3 col = vCol * (0.22 + 0.95 * diff);
+      float aa = smoothstep(edge, edge - 0.07, rr);
+      gl_FragColor = vec4(col, aa);
+      #include <colorspace_fragment>
+    }`,
+}));
+BELTS.forEach((bd, i) => {
+  const g = new THREE.BufferGeometry(), rng = Math.random;
+  const aT = new Float32Array(bd.N), aAng = new Float32Array(bd.N), aH = new Float32Array(bd.N),
+        aSize = new Float32Array(bd.N), aSeed = new Float32Array(bd.N);
+  for (let k = 0; k < bd.N; k++) {
+    aT[k] = rng(); aAng[k] = rng() * Math.PI * 2;
+    aH[k] = (rng() + rng() - 1) * 2.2;                         // треугольное распределение: пыль жмётся к листу
+    aSize[k] = 0.9 + 2.9 * Math.pow(rng(), 2.2);               // степенной закон: много мелочи, редкие крупные
+    aSeed[k] = rng() * 100;                                    // форма, оттенок и кувыркание камня
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bd.N * 3), 3));   // настоящие позиции живут в шейдере
+  g.setAttribute('aT', new THREE.BufferAttribute(aT, 1));
+  g.setAttribute('aAng', new THREE.BufferAttribute(aAng, 1));
+  g.setAttribute('aH', new THREE.BufferAttribute(aH, 1));
+  g.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(aSeed, 1));
+  const pts = new THREE.Points(g, beltMats[i]);
+  pts.frustumCulled = false;                                   // dummy-позиции дали бы пустую bounding sphere
+  scene.add(pts);
 });
 
 // --- the three "real vs stylized" toggles ---
@@ -461,6 +567,12 @@ function recompute(reframe = true) {
                              p.x = Math.cos(p.ang) * p.orbit; p.z = Math.sin(p.ang) * p.orbit; }
   const orbits = planets.map(p => p.orbit);
   const innermost = Math.min(...orbits), maxOrbit = Math.max(...orbits);
+
+  // 1b) the belts follow the same distance flip (radii live in uniforms — instant, no re-upload)
+  beltMats.forEach((m, i) => { const bd = BELTS[i];
+    m.uniforms.uR0.value = real.dist ? bd.realA0 * AU_UNIT : bd.styl0;
+    m.uniforms.uR1.value = real.dist ? bd.realA1 * AU_UNIT : bd.styl1;
+  });
 
   // 2) radii — true size ratios (anchored so the Sun keeps its stylized size), or the stylized sizes
   for (const b of bodies) b.radius = real.size ? Math.max(MIN_VIS, sun.radiusS * (b.realR / sun.realR)) : b.radiusS;
@@ -538,7 +650,7 @@ bReset.onclick = () => { freeRoam(); resetView(); };
 // --- focus / free-roam: tap a body (in the scene or the picker strip) → camera flies to it & follows; ⟲ / r = free roam ---
 const CENTER = new THREE.Vector3(0, -45, 0);
 const RU = { Sun: 'Солнце', Mercury: 'Меркурий', Venus: 'Венера', Earth: 'Земля', Mars: 'Марс',
-             Jupiter: 'Юпитер', Saturn: 'Сатурн', Uranus: 'Уран', Neptune: 'Нептун' };
+             Jupiter: 'Юпитер', Saturn: 'Сатурн', Uranus: 'Уран', Neptune: 'Нептун', Pluto: 'Плутон' };
 const focusOrder = [sun, ...planets];
 const focusEl = document.getElementById('focus');
 const picker = document.getElementById('picker');
@@ -572,7 +684,7 @@ renderer.domElement.addEventListener('pointerup', e => {
   const rect = renderer.domElement.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1,
                                       -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
-  const hit = ray.intersectObjects([sunMesh, ...planetMeshes], true).find(h => h.object !== prominences);   // спящие (невидимые) частицы протуберанцев — не мишень
+  const hit = ray.intersectObjects([sunMesh, ...planetMeshes], true).find(h => !h.object.isPoints);   // частицы (протуберанцы, пояса) — не мишень
   if (!hit) return;
   let o = hit.object; while (o && o !== sunMesh && !planetMeshes.includes(o)) o = o.parent;
   const b = o === sunMesh ? sun : (planetMeshes.includes(o) ? planets[planetMeshes.indexOf(o)] : null);
@@ -622,9 +734,11 @@ function animate() {
   const sy = disp(0, 0);
   sunMesh.position.set(0, sy + sun.radius, 0);   // bottom rests at the sheet's low point — sits IN the fabric, never below it
   sunLight.position.copy(sunMesh.position);
+  SUN_POS.value.copy(sunMesh.position);          // rocks in the belts are lit from here
   if (!paused) {
     sunMat.uniforms.time.value += 0.026 * F; sunMesh.rotation.y += 0.0012 * F;   // boil + slow axial spin
     PROM.update(sunMat.uniforms.time.value);   // flow plasma along the magnetic loops (frozen buffers keep the picture while paused)
+    BELT_TIME.value += 0.02 * F;               // asteroid belts drift on the same clock as the planets
   }
   planets.forEach((p, i) => {
     planetMeshes[i].position.set(p.x, disp(p.x, p.z) + p.radius, p.z);
