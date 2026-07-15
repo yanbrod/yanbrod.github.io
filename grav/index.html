@@ -138,9 +138,9 @@ const planets = [
   { name: 'Mars',    color: 0xc1502e, rwell: 15, speed: 0.025, radiusS: 4.0, massS: 150,  orbitS: 176, realR: 0.532, realM: 0.107,  realAU: 1.524, ecc: 0.0934, peri: 336.0, texture: 'mars.jpg', textureNight: 'mars_night.jpg', spin: 0.004, atmoColor: 0xc07a48, nightBoost: 0.85, atmoStr: 0.6, atmoPow: 5.0 },
   { name: 'Jupiter', color: 0xcaa877, rwell: 42, speed: 0.015, radiusS: 14,  massS: 1300, orbitS: 244, realR: 10.97, realM: 317.8,  realAU: 5.204, ecc: 0.0489, peri: 14.8, texture: 'jupiter.jpg', textureNight: 'jupiter_night.jpg', spin: 0.01, nightBoost: 0.9, atmoColor: 0xd8b08a, atmoStr: 0.45, atmoPow: 3.5 },   // spin 0.01: сутки 9.9 ч, самый быстрый волчок системы
   { name: 'Saturn',  color: 0xd8c48f, rwell: 38, speed: 0.011, radiusS: 12,  massS: 1000, orbitS: 312, realR: 9.14,  realM: 95.2,   realAU: 9.583, ecc: 0.0565, peri: 92.9, ring: true, texture: 'saturn.jpg', spin: 0.009, nightBoost: 0.12, atmoColor: 0xe6d3a3, atmoStr: 0.3, atmoPow: 3.5 },   // без ночной карты: ночь = день × nightBoost; сутки 10.7 ч
-  { name: 'Uranus',  color: 0x9fd8de, rwell: 28, speed: 0.008, radiusS: 8,   massS: 480,  orbitS: 366, realR: 3.98,  realM: 14.5,   realAU: 19.22, ecc: 0.0457, peri: 172.4 },
-  { name: 'Neptune', color: 0x4f6fd6, rwell: 28, speed: 0.006, radiusS: 8,   massS: 480,  orbitS: 414, realR: 3.86,  realM: 17.1,   realAU: 30.07, ecc: 0.0113, peri: 46.7 },
-  { name: 'Pluto',   color: 0xc9b295, rwell: 8,  speed: 0.005, radiusS: 2.2, massS: 30,   orbitS: 470, realR: 0.187, realM: 0.00218, realAU: 39.48, ecc: 0.2488, peri: 224.6 },   // дом — в поясе Койпера (orbitS внутри его стилизованной полосы)
+  { name: 'Uranus',  color: 0x9fd8de, rwell: 28, speed: 0.008, radiusS: 8,   massS: 480,  orbitS: 366, realR: 3.98,  realM: 14.5,   realAU: 19.22, ecc: 0.0457, peri: 172.4, texture: 'uranus.jpg', spin: 0.0056, tilt: 98, nightBoost: 0.12, atmoColor: 0xbfeef0, atmoStr: 0.5, atmoPow: 3.0 },   // tilt 98° — лежит на боку; сутки 17.2 ч
+  { name: 'Neptune', color: 0x4f6fd6, rwell: 28, speed: 0.006, radiusS: 8,   massS: 480,  orbitS: 414, realR: 3.86,  realM: 17.1,   realAU: 30.07, ecc: 0.0113, peri: 46.7, texture: 'neptune.jpg', spin: 0.006, nightBoost: 0.12, atmoColor: 0x5f86e8, atmoStr: 0.55, atmoPow: 3.0 },   // сутки 16.1 ч
+  { name: 'Pluto',   color: 0xc9b295, rwell: 8,  speed: 0.005, radiusS: 2.2, massS: 30,   orbitS: 470, realR: 0.187, realM: 0.00218, realAU: 39.48, ecc: 0.2488, peri: 224.6, texture: 'pluto.jpg', spin: -0.0006, nightBoost: 0.12, atmoColor: 0x88aadd, atmoStr: 0.25, atmoPow: 4.0 },   // дом — в поясе Койпера; спин ретроградный и ленивый (сутки 6.4 земных), голубая азотная дымка — привет New Horizons
 ];
 const bodies = [sun, ...planets];
 bodies.forEach(b => { b.radius = b.radiusS; b.mass = b.massS; b.orbit = b.orbitS; });
@@ -413,6 +413,7 @@ const planetMeshes = planets.map(p => {
       emissive: p.color, emissiveIntensity: 0.4, fog: false });   // fog: false — кастомные шейдеры планет туман не видят, стандартный материал не должен выбиваться
   }
   const m = new THREE.Mesh(new THREE.SphereGeometry(p.radiusS, seg, seg), mat);
+  if (p.tilt) { m.rotation.order = 'ZYX'; m.rotation.z = p.tilt * Math.PI / 180; }   // ось набок (Уран: 98°); спин по rotation.y крутит вокруг УЖЕ наклонённой оси
   if (p.cloud) {                                     // drifting cloud shell, lit day/night like the surface
     const ctex = texLoader.load(p.cloud);
     ctex.wrapS = THREE.RepeatWrapping; ctex.wrapT = THREE.ClampToEdgeWrapping;
