@@ -142,7 +142,27 @@ const planets = [
   { name: 'Neptune', color: 0x4f6fd6, rwell: 28, speed: 0.006, radiusS: 8,   massS: 480,  orbitS: 414, realR: 3.86,  realM: 17.1,   realAU: 30.07, ecc: 0.0113, peri: 46.7, texture: 'neptune.jpg', spin: 0.006, nightBoost: 0.12, atmoColor: 0x5f86e8, atmoStr: 0.55, atmoPow: 3.0 },   // сутки 16.1 ч
   { name: 'Pluto',   color: 0xc9b295, rwell: 8,  speed: 0.005, radiusS: 2.2, massS: 30,   orbitS: 470, realR: 0.187, realM: 0.00218, realAU: 39.48, ecc: 0.2488, peri: 224.6, texture: 'pluto.jpg', spin: -0.0006, nightBoost: 0.12, atmoColor: 0x88aadd, atmoStr: 0.25, atmoPow: 4.0 },   // дом — в поясе Койпера; спин ретроградный и ленивый (сутки 6.4 земных), голубая азотная дымка — привет New Horizons
 ];
-const bodies = [sun, ...planets];
+// --- moons. Орбиты заданы в РАДИУСАХ хозяина: stylA — компактно, чтобы было видно в стилизованном
+//     виде; realA — честное отношение a/R планеты (включается тумблером «размеры» вместе с честным R).
+//     T — период в земных сутках: скорости лун держат честные отношения (кап — чтобы Фобос не мельтешил). ---
+const MOONS = [
+  { name: 'Moon',     hostName: 'Earth',   color: 0xb8b8b0, radiusS: 1.4,  massS: 25,  rwell: 3,   stylA: 3.2,  realA: 60.3,  T: 27.32, realR: 0.273,  realM: 0.0123 },
+  { name: 'Phobos',   hostName: 'Mars',    color: 0x887868, radiusS: 0.45, massS: 2,   rwell: 0.8, stylA: 2.1,  realA: 2.76,  T: 0.319, realR: 0.0018, realM: 1.8e-9 },   // носится быстрее марсианских суток
+  { name: 'Deimos',   hostName: 'Mars',    color: 0x93836f, radiusS: 0.4,  massS: 1.5, rwell: 0.7, stylA: 3.1,  realA: 6.92,  T: 1.263, realR: 0.001,  realM: 2.5e-10 },
+  { name: 'Io',       hostName: 'Jupiter', color: 0xd8c060, radiusS: 1.5,  massS: 22,  rwell: 3,   stylA: 1.55, realA: 5.90,  T: 1.769, realR: 0.286,  realM: 0.015 },
+  { name: 'Europa',   hostName: 'Jupiter', color: 0xd8cdb8, radiusS: 1.3,  massS: 18,  rwell: 2.6, stylA: 1.95, realA: 9.38,  T: 3.551, realR: 0.245,  realM: 0.008 },
+  { name: 'Ganymede', hostName: 'Jupiter', color: 0xa89880, radiusS: 1.9,  massS: 30,  rwell: 3.6, stylA: 2.4,  realA: 14.97, T: 7.155, realR: 0.413,  realM: 0.0248 },
+  { name: 'Callisto', hostName: 'Jupiter', color: 0x8a7f70, radiusS: 1.75, massS: 26,  rwell: 3.3, stylA: 2.95, realA: 26.33, T: 16.69, realR: 0.378,  realM: 0.018 },
+  { name: 'Titan',    hostName: 'Saturn',  color: 0xd8a860, radiusS: 1.85, massS: 28,  rwell: 3.5, stylA: 3.1,  realA: 20.27, T: 15.95, realR: 0.404,  realM: 0.0225 },
+  { name: 'Titania',  hostName: 'Uranus',  color: 0x9a9298, radiusS: 0.8,  massS: 8,   rwell: 1.6, stylA: 2.4,  realA: 17.07, T: 8.706, realR: 0.124,  realM: 0.00059 },
+  { name: 'Triton',   hostName: 'Neptune', color: 0xd8c8c0, radiusS: 1.1,  massS: 14,  rwell: 2.2, stylA: 2.5,  realA: 14.33, T: 5.877, realR: 0.212,  realM: 0.0036, retro: true },     // украден из пояса Койпера — орбита задом наперёд
+  { name: 'Charon',   hostName: 'Pluto',   color: 0xa8a0a0, radiusS: 0.9,  massS: 10,  rwell: 1.8, stylA: 3.4,  realA: 16.5,  T: 6.387, realR: 0.095,  realM: 0.00027, binary: 0.1085 }, // двойная система: барицентр ВНЕ Плутона
+];
+MOONS.forEach(m => { m.host = planets.find(p => p.name === m.hostName);
+                     m.ang = Math.random() * Math.PI * 2;
+                     m.speed = Math.min(1.8, 6 / m.T);          // честные отношения периодов, кап для глаза
+                     m.orbitS = 0; m.realAU = 0; });
+const bodies = [sun, ...planets, ...MOONS];
 bodies.forEach(b => { b.radius = b.radiusS; b.mass = b.massS; b.orbit = b.orbitS; });
 planets.forEach(p => { p.ang = Math.random() * Math.PI * 2; });
 
@@ -169,6 +189,19 @@ function orbXZ(p, out) {
   const th = Math.atan2(Math.sqrt(1 - e*e) * Math.sin(E), Math.cos(E) - e);
   const r = a * (1 - e * Math.cos(E)), w = (p.peri || 0) * Math.PI / 180;
   out.x = Math.cos(th + w) * r; out.z = Math.sin(th + w) * r;
+}
+
+// спутник: круг вокруг хозяина. Харон — честная двойная: кеплерова точка Плутона — это БАРИЦЕНТР,
+// Плутон отступает от него на долю binary, Харон — на (1−binary); оба танцуют вокруг пустого места.
+function moonXZ(m) {
+  const dx = Math.cos(m.ang), dz = Math.sin(m.ang), h = m.host;
+  if (m.binary) {
+    h._bx = h.x; h._bz = h.z;                                   // orbXZ уже поставил хозяина в кеплерову точку
+    h.x = h._bx - dx * m.orbit * m.binary;       h.z = h._bz - dz * m.orbit * m.binary;
+    m.x = h._bx + dx * m.orbit * (1 - m.binary); m.z = h._bz + dz * m.orbit * (1 - m.binary);
+  } else {
+    m.x = h.x + dx * m.orbit; m.z = h.z + dz * m.orbit;
+  }
 }
 
 // --- the spacetime sheet. The wells are summed on the GPU: the vertex shader reads 9 (x, z, G·mass, rwell)
@@ -466,6 +499,13 @@ const planetMeshes = planets.map(p => {
   scene.add(m); return m;
 });
 
+const moonMeshes = MOONS.map(m => {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(m.radiusS, 24, 24),
+    new THREE.MeshStandardMaterial({ color: m.color, roughness: 0.9, metalness: 0.03,
+      emissive: m.color, emissiveIntensity: 0.22, fog: false }));   // ниже, чем у планет: пусть будет светотень от Солнца
+  scene.add(mesh); return mesh;
+});
+
 // --- warped orbit rings drawn on the sheet ---
 let showOrbits = true;
 const orbitLines = planets.map(p => {
@@ -473,6 +513,12 @@ const orbitLines = planets.map(p => {
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
   const line = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0x49b8ce, transparent: true, opacity: 0.55 }));
   scene.add(line); return { line, N, p };
+});
+const moonRings = MOONS.map(m => {           // колечки лунных орбит — едут вместе с хозяином
+  const N = 64, g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  const line = new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0x49b8ce, transparent: true, opacity: 0.3 }));
+  scene.add(line); return { line, N, m };
 });
 
 // --- asteroid belts: the main belt (between Mars and Jupiter) and the Kuiper belt (beyond Neptune —
@@ -598,13 +644,18 @@ function recompute(reframe = true) {
     for (const b of bodies) b.radius = real.size ? b.radius * f : Math.max(1.0, b.radius * f);
   }
 
-  // 4) masses (well depth) — Sun anchored; planets by true mass ratio → their dimples all but vanish
+  // 3b) луны: орбита в радиусах хозяина — честное отношение a/R при честных размерах, компактное иначе
+  //     (привязка к ТЕКУЩЕМУ радиусу сама масштабирует лунные системы во всех комбинациях режимов)
+  for (const m of MOONS) { m.orbit = m.host.radius * (real.size ? m.realA : m.stylA); moonXZ(m); }
+
+  // 4) masses (well depth) — Sun anchored; planets & moons by true mass ratio → their dimples all but vanish
   sun.mass = sun.massS;
-  for (const p of planets) p.mass = real.mass ? sun.massS * (p.realM / sun.realM) : p.massS;
+  for (const b of [...planets, ...MOONS]) b.mass = real.mass ? sun.massS * (b.realM / sun.realM) : b.massS;
 
   // 5) push effective sizes to the meshes (orbit lines read planet state live in updateOrbitLines)
   sunMesh.scale.setScalar(sun.radius / sun.radiusS);
   planets.forEach((p, i) => planetMeshes[i].scale.setScalar(p.radius / p.radiusS));
+  MOONS.forEach((m, i) => moonMeshes[i].scale.setScalar(m.radius / m.radiusS));
 
   // 6) reframe: zoom out far enough to hold the outermost orbit. With real distances the whole inner
   //    system sinks ~250 units into the sun's (still stylized) well — aim the camera INTO the pit,
@@ -636,7 +687,7 @@ let paused = false;
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;   // don't shadow browser shortcuts (⌘R, ctrl+1…)
   if (e.code === 'Space') { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; e.preventDefault(); }
-  if (e.key === 'o') { showOrbits = !showOrbits; orbitLines.forEach(o => o.line.visible = showOrbits); }
+  if (e.key === 'o') { showOrbits = !showOrbits; linesDirty = true; orbitLines.forEach(o => o.line.visible = showOrbits); moonRings.forEach(o => o.line.visible = showOrbits); }
   if (e.key === 'r') { freeRoam(); resetView(); }
   if (e.key === 'f') cycleFocus();
   if (e.key === '1') toggleMode('mass');
@@ -658,14 +709,21 @@ const bPause = document.getElementById('bPause'),
       bOrbit = document.getElementById('bOrbit'),
       bReset = document.getElementById('bReset');
 bPause.onclick = () => { paused = !paused; bPause.textContent = paused ? '▶' : '⏸'; };
-bOrbit.onclick = () => { showOrbits = !showOrbits; linesDirty = true; orbitLines.forEach(o => o.line.visible = showOrbits); bOrbit.style.opacity = showOrbits ? 1 : .4; };
+bOrbit.onclick = () => { showOrbits = !showOrbits; linesDirty = true; orbitLines.forEach(o => o.line.visible = showOrbits); moonRings.forEach(o => o.line.visible = showOrbits); bOrbit.style.opacity = showOrbits ? 1 : .4; };
 bReset.onclick = () => { freeRoam(); resetView(); };
 
 // --- focus / free-roam: tap a body (in the scene or the picker strip) → camera flies to it & follows; ⟲ / r = free roam ---
 const CENTER = new THREE.Vector3(0, -45, 0);
 const RU = { Sun: 'Солнце', Mercury: 'Меркурий', Venus: 'Венера', Earth: 'Земля', Mars: 'Марс',
-             Jupiter: 'Юпитер', Saturn: 'Сатурн', Uranus: 'Уран', Neptune: 'Нептун', Pluto: 'Плутон' };
-const focusOrder = [sun, ...planets];
+             Jupiter: 'Юпитер', Saturn: 'Сатурн', Uranus: 'Уран', Neptune: 'Нептун', Pluto: 'Плутон',
+             Moon: 'Луна', Phobos: 'Фобос', Deimos: 'Деймос', Io: 'Ио', Europa: 'Европа',
+             Ganymede: 'Ганимед', Callisto: 'Каллисто', Titan: 'Титан', Titania: 'Титания',
+             Triton: 'Тритон', Charon: 'Харон' };
+const focusOrder = [sun, ...planets, ...MOONS];
+const bodyMesh = new Map([[sun, sunMesh]]);
+planets.forEach((p, i) => bodyMesh.set(p, planetMeshes[i]));
+MOONS.forEach((m, i) => bodyMesh.set(m, moonMeshes[i]));
+const meshBody = new Map([...bodyMesh].map(([b, mesh]) => [mesh, b]));
 const focusEl = document.getElementById('focus');
 const picker = document.getElementById('picker');
 const pickBtns = [];
@@ -701,10 +759,10 @@ renderer.domElement.addEventListener('pointerup', e => {
   const rect = renderer.domElement.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1,
                                       -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
-  const hit = ray.intersectObjects([sunMesh, ...planetMeshes], true).find(h => !h.object.isPoints);   // частицы (протуберанцы, пояса) — не мишень
+  const hit = ray.intersectObjects([sunMesh, ...planetMeshes, ...moonMeshes], true).find(h => !h.object.isPoints);   // частицы (протуберанцы, пояса) — не мишень
   if (!hit) return;
-  let o = hit.object; while (o && o !== sunMesh && !planetMeshes.includes(o)) o = o.parent;
-  const b = o === sunMesh ? sun : (planetMeshes.includes(o) ? planets[planetMeshes.indexOf(o)] : null);
+  let o = hit.object; while (o && !meshBody.has(o)) o = o.parent;
+  const b = meshBody.get(o);
   if (b) setFocus(b);
 }, { passive: true });
 
@@ -743,6 +801,16 @@ function updateOrbitLines() {
     }
     pos.needsUpdate = true;
   });
+  moonRings.forEach(o => {
+    const m = o.m, cx = m.binary ? m.host._bx : m.host.x, cz = m.binary ? m.host._bz : m.host.z;   // двойная — кольцо вокруг барицентра
+    const lift = Math.min(0.3, m.radius * 0.6 + 0.01);
+    const pos = o.line.geometry.attributes.position;
+    for (let k = 0; k < o.N; k++) {
+      const a2 = k / o.N * Math.PI * 2, x = cx + Math.cos(a2) * m.orbit, z = cz + Math.sin(a2) * m.orbit;
+      pos.setXYZ(k, x, disp(x, z) + lift, z);
+    }
+    pos.needsUpdate = true;
+  });
 }
 
 function animate() {
@@ -752,6 +820,8 @@ function animate() {
   // ang -= : orbital motion now matches the spins (both CCW from the north), as in the real system
   if (!paused) for (const p of planets) p.ang -= p.speed * 0.02 * F;
   for (const p of planets) orbXZ(p, p);   // Kepler-позиция; вне pause-guard: переключения масштабов работают и на паузе
+  if (!paused) for (const m of MOONS) m.ang += (m.retro ? 1 : -1) * m.speed * 0.02 * F;   // Тритон — ретроградный
+  for (const m of MOONS) moonXZ(m);       // после orbXZ хозяев (Харон сдвигает Плутон от барицентра)
   bodies.forEach((b, i) => uWells[i].set(b.x, b.z, G * b.mass, b.rwell));   // feed the GPU sheet
   gridMat.uniforms.uFlat.value = real.flat ? 1 : 0;   // пояса делят этот uniform — выпрямляет и их
   grid.visible = !real.flat;                          // «плоскость» = убрать лист совсем: чистая карта системы
@@ -776,10 +846,11 @@ function animate() {
       }
     }
   });
+  MOONS.forEach((m, i) => moonMeshes[i].position.set(m.x, disp(m.x, m.z) + m.radius, m.z));   // ямка в ямке: луна едет по листу внутри вмятины хозяина
   if (showOrbits && (!paused || linesDirty)) { updateOrbitLines(); linesDirty = false; }   // hidden or static → skip
   // camera: follow the focused body (or ease back to centre), smooth-zooming to frame it.
   // the camera translates WITH the target, so the follow distance holds even for fast planets.
-  const pivot = focus ? (focus === sun ? sunMesh.position : planetMeshes[planets.indexOf(focus)].position) : CENTER;
+  const pivot = focus ? bodyMesh.get(focus).position : CENTER;
   _prevT.copy(controls.target);
   controls.target.lerp(pivot, 1 - Math.pow(0.85, F));                 // rate-independent “0.15 per 120 Hz frame”
   camera.position.add(_dT.subVectors(controls.target, _prevT));
