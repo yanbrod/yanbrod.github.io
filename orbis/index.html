@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10171b">
+    <title>Orbis · Атлас мира</title>
+    <link rel="icon" href="data:,">
+    <script type="module" crossorigin src="./assets/index-VRKGHCom.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cw9wEHpg.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <h1><span class="brand-mark" aria-hidden="true"></span>Orbis</h1>
+      <span class="app-title">Атлас мира</span>
+      <button type="button" id="directory-open" class="directory-open" aria-controls="directory" aria-expanded="false" disabled><span aria-hidden="true">☰</span> Справочник</button>
+      <span id="export-status" role="status"></span>
+      <button type="button" id="export" class="export" disabled><span aria-hidden="true">↓</span> Развёртка PNG</button>
+    </header>
+    <main class="workspace">
+      <section class="atlas" aria-label="Карта мира">
+        <div id="viewport">
+          <canvas id="globe" aria-label="Интерактивный глобус"></canvas>
+          <div class="world-title">
+            <h2 id="world-name">Глобус</h2>
+            <p id="world-meta"></p>
+          </div>
+          <div id="map-error" role="status" hidden></div>
+          <div id="tooltip" role="tooltip" hidden></div>
+          <aside id="directory" class="directory" aria-label="Справочник мира" hidden></aside>
+          <p class="navigation-hint"><span class="desktop-hint">Потяните для вращения · Колесо для масштаба</span><span class="touch-hint">Вращайте пальцем · Коснитесь ячейки для сведений</span></p>
+        </div>
+        <details id="legend" class="legend" open hidden>
+          <summary><span>Легенда</span><strong id="legend-title"></strong><em class="fold-hint" aria-hidden="true"></em></summary>
+          <div id="legend-body"></div>
+        </details>
+        <dl id="summary" class="world-summary" aria-label="Сводка мира" hidden></dl>
+      </section>
+
+      <aside class="panel" aria-label="Управление атласом">
+        <section>
+          <details id="generation" class="fold" open>
+          <summary><h2>Генерация мира</h2><em class="fold-hint" aria-hidden="true"></em></summary>
+          <form id="generator">
+            <label for="seed">Зерно мира <span class="technical" lang="en">seed</span></label>
+            <div class="seed-row">
+              <input type="text" id="seed" autocomplete="off" spellcheck="false">
+              <button type="button" id="dice" title="Случайное зерно" aria-label="Случайное зерно">🎲</button>
+            </div>
+            <label for="resolution">Разрешение</label>
+            <select id="resolution"></select>
+            <details class="params">
+              <summary>Параметры генерации</summary>
+              <div id="parameters"></div>
+            </details>
+            <button type="submit" class="generate">Сгенерировать</button>
+          </form>
+          <details id="timings" class="timings" hidden>
+            <summary>Время по стадиям</summary>
+            <dl id="timing-list" class="rows"></dl>
+          </details>
+          </details>
+          <div class="generation-status">
+            <p id="status" role="status" aria-live="polite"></p>
+            <progress id="progress" aria-label="Ход генерации" hidden></progress>
+          </div>
+        </section>
+        <section>
+          <h2>Отображение</h2>
+          <fieldset><legend>Слой</legend><div id="layers" class="layers"></div></fieldset>
+          <fieldset><legend>Сезон</legend><div id="seasons" class="segments"></div></fieldset>
+          <fieldset><legend>Окраска</legend><div id="modes" class="segments"></div></fieldset>
+          <div id="relief"></div>
+          <div class="overlays">
+            <label><input id="grid" type="checkbox">Сетка</label>
+            <label><input id="rivers" type="checkbox" checked>Реки</label>
+            <label><input id="cities" type="checkbox" checked>Города</label>
+            <label><input id="roads" type="checkbox" checked>Дороги</label>
+            <label><input id="resources" type="checkbox">Ресурсы</label>
+            <label><input id="vectors" type="checkbox"><span id="vector-label">Ветер</span></label>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </body>
+</html>
